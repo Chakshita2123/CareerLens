@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,38 +6,60 @@
 
 @layer base {
   :root {
-    --accent: 99 102 241;
-    --score-high: 34 197 94;
-    --score-mid: 245 158 11;
-    --score-low: 239 68 68;
+    --lens-cyan: 0 240 255;
+    --lens-blue: 14 165 233;
+    --lens-violet: 139 92 246;
+    --focus-locked: 0 230 118;
+    --focus-calibrating: 255 179 0;
+    --focus-lost: 255 51 102;
   }
 
-  * { box-sizing: border-box; }
+  * {
+    box-sizing: border-box;
+  }
 
   html {
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     scroll-behavior: smooth;
+    background-color: #06070a;
   }
 
   body {
-    background-color: #0d0d17;
-    color: #e2e2f0;
+    background-color: #06070a;
+    color: #e1e7f5;
     min-height: 100vh;
+    background-image: 
+      radial-gradient(circle at 50% 0%, rgba(0, 240, 255, 0.04) 0%, transparent 60%),
+      radial-gradient(circle at 80% 20%, rgba(139, 92, 246, 0.03) 0%, transparent 50%),
+      linear-gradient(to bottom, #06070a 0%, #080a0f 100%);
+    background-attachment: fixed;
   }
 
   ::selection {
-    background: rgba(99, 102, 241, 0.3);
-    color: #fff;
+    background: rgba(0, 240, 255, 0.25);
+    color: #ffffff;
   }
 
-  ::-webkit-scrollbar { width: 6px; }
-  ::-webkit-scrollbar-track { background: #12121a; }
-  ::-webkit-scrollbar-thumb { background: #2e2e4a; border-radius: 3px; }
-  ::-webkit-scrollbar-thumb:hover { background: #6366f1; }
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #090b10;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #1e2638;
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #00f0ff80;
+  }
 }
 
 @layer components {
+  /* Optical Base Cards */
   .card {
     @apply bg-surface-card border border-surface-border rounded-2xl;
   }
@@ -46,43 +68,84 @@
     @apply bg-surface-elevated border border-surface-border rounded-2xl;
   }
 
+  .card-optical {
+    @apply bg-surface-card/90 backdrop-blur-md border border-surface-border rounded-2xl relative overflow-hidden;
+  }
+
+  /* Viewfinder framing brackets */
+  .viewfinder-corner-tl {
+    @apply absolute top-0 left-0 w-3.5 h-3.5 border-t-2 border-l-2 border-lens-cyan/50 pointer-events-none transition-colors duration-300;
+  }
+  .viewfinder-corner-tr {
+    @apply absolute top-0 right-0 w-3.5 h-3.5 border-t-2 border-r-2 border-lens-cyan/50 pointer-events-none transition-colors duration-300;
+  }
+  .viewfinder-corner-bl {
+    @apply absolute bottom-0 left-0 w-3.5 h-3.5 border-b-2 border-l-2 border-lens-cyan/50 pointer-events-none transition-colors duration-300;
+  }
+  .viewfinder-corner-br {
+    @apply absolute bottom-0 right-0 w-3.5 h-3.5 border-b-2 border-r-2 border-lens-cyan/50 pointer-events-none transition-colors duration-300;
+  }
+
+  /* Optical Buttons */
   .btn-primary {
-    @apply bg-accent hover:bg-accent-hover text-white font-semibold px-5 py-2.5 rounded-xl
-           transition-all duration-200 hover:shadow-[0_0_24px_rgba(99,102,241,0.4)]
-           disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-none;
+    @apply bg-gradient-to-r from-lens-cyan via-lens-sapphire to-lens-blue text-[#06070a] font-bold px-5 py-2.5 rounded-xl
+           transition-all duration-200 shadow-[0_0_20px_rgba(0,240,255,0.35)] hover:shadow-[0_0_30px_rgba(0,240,255,0.6)]
+           hover:scale-[1.01] active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:hover:scale-100;
   }
 
   .btn-secondary {
-    @apply border border-surface-border hover:border-accent/50 text-slate-300
+    @apply border border-surface-border bg-surface-elevated/80 hover:border-lens-cyan/50 text-slate-300
            hover:text-white font-medium px-5 py-2.5 rounded-xl transition-all duration-200
-           hover:bg-accent/10 disabled:opacity-40 disabled:cursor-not-allowed;
+           hover:bg-lens-cyan-dim hover:shadow-[0_0_16px_rgba(0,240,255,0.15)] disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+
+  .btn-optical-ghost {
+    @apply border border-surface-border/80 hover:border-lens-cyan/40 text-slate-400 hover:text-lens-cyan
+           text-xs font-mono px-3 py-1.5 rounded-lg transition-all bg-surface-elevated/40;
   }
 
   .label {
-    @apply text-xs font-semibold uppercase tracking-widest text-slate-500;
+    @apply text-xs font-semibold uppercase tracking-widest text-slate-400 font-mono;
   }
 
   .shimmer {
     background: linear-gradient(
       90deg,
-      #1a1a28 25%,
-      #22223a 50%,
-      #1a1a28 75%
+      #0e121a 25%,
+      #161d2b 50%,
+      #0e121a 75%
     );
     background-size: 200% 100%;
-    animation: shimmer 1.5s infinite linear;
+    animation: shimmer 1.8s infinite linear;
   }
 }
 
 @layer utilities {
   .text-gradient {
-    background: linear-gradient(135deg, #818cf8 0%, #c084fc 100%);
+    background: linear-gradient(135deg, #ffffff 0%, #00f0ff 45%, #9d72ff 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
 
-  .glow-accent {
-    box-shadow: 0 0 32px rgba(99, 102, 241, 0.25);
+  .text-gradient-cyan {
+    background: linear-gradient(135deg, #00f0ff 0%, #38bdf8 60%, #818cf8 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .glow-cyan {
+    box-shadow: 0 0 24px rgba(0, 240, 255, 0.25);
+  }
+
+  .glow-focus-locked {
+    box-shadow: 0 0 24px rgba(0, 230, 118, 0.3);
+  }
+
+  .optical-reticle {
+    background-image: 
+      radial-gradient(circle at center, rgba(0, 240, 255, 0.08) 1px, transparent 1px);
+    background-size: 16px 16px;
   }
 }
