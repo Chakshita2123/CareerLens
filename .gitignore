@@ -1,0 +1,51 @@
+# --- Environment variables (NEVER commit these — API keys live here) ---
+.env
+.env.local
+.env.*.local
+*.env
+
+# --- Python / FastAPI backend ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# --- Node / Next.js frontend ---
+node_modules/
+.next/
+out/
+build/
+dist/
+.turbo/
+
+# --- Logs ---
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- OS / editor junk ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# --- Uploaded resumes / test files (don't commit user data or test uploads) ---
+uploads/
+*.pdf
+*.docx
+!sample_data/*.pdf
+!sample_data/*.docx
+
+# --- ML model cache (sentence-transformers downloads models locally) ---
+.cache/
+*.pt
+*.bin
