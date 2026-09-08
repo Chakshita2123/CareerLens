@@ -48,6 +48,17 @@ from pathlib import Path
 from typing import List, Optional
 
 # ---------------------------------------------------------------------------
+# Thread-count caps — MUST be set before torch / sentence-transformers import.
+# On Render's free tier (single vCPU, 512 MB RAM), multiple torch threads give
+# zero throughput benefit but each thread stack + buffer costs ~20–50 MB.
+# Capping to 1 is the single biggest free-tier memory win.
+# ---------------------------------------------------------------------------
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["TORCH_NUM_THREADS"] = "1"
+
+# ---------------------------------------------------------------------------
 # Cache redirect — must be set before importing sentence-transformers modules.
 # Phase 1–4 imports pull in the embedding model at import time; these env vars
 # ensure the model is cached in .hf_cache/ inside the project, not a system path.
@@ -186,7 +197,26 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def startup_event() -> None:
-    """Validate MongoDB connectivity on server start."""
+    """Validate MongoDB connectivity on server start and configure runtime limits."""
+    # Belt-and-suspenders: enforce single-thread mode at runtime in case the
+    # env vars were not effective before torch was loaded by a transitive import.
+    try:
+        import torch
+        torch.set_num_threads(1)
+        torch.set_num_interop_threads(1)
+    except Exception:
+        pass  # torch not yet loaded — env vars already handled it
+
+    # Log baseline RSS so we can track startup memory in Render's log stream.
+    try:
+        import resource
+        rss_mb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024
+        print(f"[CareerLens] Startup RSS: {rss_mb:.0f} MB (model NOT yet loaded — lazy init)",
+              flush=True)
+    except Exception:
+        pass  # resource module not available on Windows
+
+    # Validate MongoDB connectivity.
     try:
         client = get_versions_collection().database.client
         await client.admin.command("ping")

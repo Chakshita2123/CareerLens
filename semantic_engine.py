@@ -25,7 +25,7 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import Dict, List, Union
+from typing import Dict, List, Optional, Union
 
 # ---------------------------------------------------------------------------
 # Cache redirect — fixes PermissionError on the default HF cache path.
@@ -40,7 +40,6 @@ os.environ.setdefault("SENTENCE_TRANSFORMERS_HOME", _CACHE_DIR)
 os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")  # suppress OneDrive symlink warning
 
 import numpy as np
-from sentence_transformers import SentenceTransformer
 
 # ---------------------------------------------------------------------------
 # Tunable constants  ← adjust here without touching logic
@@ -103,13 +102,30 @@ SKILL_CONTEXT_EXPANSIONS: Dict[str, str] = {
 }
 
 # ---------------------------------------------------------------------------
-# Model — loaded once at import time
+# Model — lazy singleton (loaded on first use, not at import time)
+# ---------------------------------------------------------------------------
+# Deferring model load until the first actual embedding request means:
+#   - App startup is fast and memory-light (survives Render's 512 MB free tier)
+#   - Health-check / root endpoint responds immediately without touching torch
+#   - Model is still loaded only ONCE and reused for all subsequent requests
 # ---------------------------------------------------------------------------
 
-print(f"[semantic_engine] Loading embedding model '{EMBEDDING_MODEL_NAME}' …",
-      file=sys.stderr)
-_MODEL: SentenceTransformer = SentenceTransformer(EMBEDDING_MODEL_NAME)
-print("[semantic_engine] Model ready.", file=sys.stderr)
+_MODEL: Optional["SentenceTransformer"] = None
+
+
+def get_model() -> "SentenceTransformer":
+    """Return the singleton SentenceTransformer, loading it on first call."""
+    global _MODEL
+    if _MODEL is None:
+        from sentence_transformers import SentenceTransformer  # deferred import
+        print(
+            f"[semantic_engine] Loading embedding model '{EMBEDDING_MODEL_NAME}' …",
+            file=sys.stderr,
+            flush=True,
+        )
+        _MODEL = SentenceTransformer(EMBEDDING_MODEL_NAME)
+        print("[semantic_engine] Model ready.", file=sys.stderr, flush=True)
+    return _MODEL
 
 
 # ---------------------------------------------------------------------------
@@ -123,9 +139,10 @@ def embed_texts(texts: List[str]) -> np.ndarray:
     Returns an ndarray of shape (len(texts), embedding_dim).
     Embeddings are L2-normalised so cosine similarity == dot product.
     """
+    model = get_model()
     if not texts:
-        return np.empty((0, _MODEL.get_sentence_embedding_dimension()))
-    embeddings = _MODEL.encode(
+        return np.empty((0, model.get_sentence_embedding_dimension()))
+    embeddings = model.encode(
         texts,
         convert_to_numpy=True,
         normalize_embeddings=True,   # ← unit vectors → dot product = cosine sim
