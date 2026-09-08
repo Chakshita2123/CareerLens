@@ -2,14 +2,15 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { clsx } from 'clsx'
-import { Scan, Target, Briefcase, Zap, BarChart2 } from 'lucide-react'
+import { Scan, Target, Briefcase, Zap, BarChart2, MessageSquareCode } from 'lucide-react'
 
 const NAV = [
-  { href: '/',           label: 'Upload / Scan', icon: Scan       },
-  { href: '/match',      label: 'Job Match',     icon: Target     },
-  { href: '/roles',      label: 'Roles',         icon: Briefcase  },
-  { href: '/improve',    label: 'Enhance',       icon: Zap        },
-  { href: '/comparison', label: 'History',       icon: BarChart2  },
+  { href: '/',           label: 'Upload / Scan', icon: Scan              },
+  { href: '/match',      label: 'Job Match',     icon: Target            },
+  { href: '/roles',      label: 'Roles',         icon: Briefcase         },
+  { href: '/improve',    label: 'Enhance',       icon: Zap               },
+  { href: '/interview',  label: 'Interview',     icon: MessageSquareCode },
+  { href: '/comparison', label: 'History',       icon: BarChart2         },
 ]
 
 /**

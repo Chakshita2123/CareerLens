@@ -4,10 +4,10 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Upload, FileText, CheckCircle2, ChevronDown, ChevronUp, AlertCircle,
   Sparkles, Shield, Target, Briefcase, Zap, ArrowRight, Layers, FileCheck,
-  Scan, Crosshair, Eye, Compass, Sliders
+  Scan, Crosshair, Eye, Compass, Sliders, Download, Loader2
 } from 'lucide-react'
 import { useUserId, useSelectedVersion } from '@/lib/hooks'
-import { uploadResume } from '@/lib/api'
+import { uploadResume, downloadPdfReport } from '@/lib/api'
 import type { ResumeVersion, ATSBreakdownItem } from '@/lib/api'
 import { ApertureGauge } from '@/components/ui/ApertureGauge'
 import { ViewfinderFrame } from '@/components/ui/ViewfinderFrame'
@@ -116,10 +116,29 @@ export default function UploadPage() {
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<ResumeVersion | null>(null)
   const [label, setLabel] = useState('')
+  const [downloadingPdf, setDownloadingPdf] = useState(false)
+  const [pdfError, setPdfError] = useState<string | null>(null)
+
+  const handleDownloadPdf = async () => {
+    if (!result?._id) return
+    setDownloadingPdf(true)
+    setPdfError(null)
+    try {
+      await downloadPdfReport(result._id)
+    } catch (e: unknown) {
+      setPdfError(e instanceof Error ? e.message : 'PDF export failed')
+    } finally {
+      setDownloadingPdf(false)
+    }
+  }
 
   const handleFile = useCallback(
     async (file: File) => {
       if (!file) return
+      if (!userId) {
+        setError('User session not ready — please refresh the page and try again.')
+        return
+      }
       setError(null)
       setLoading(true)
       try {
@@ -350,6 +369,25 @@ export default function UploadPage() {
                     )}
 
                     <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 pt-2">
+                      <button
+                        type="button"
+                        onClick={handleDownloadPdf}
+                        disabled={downloadingPdf}
+                        className="btn-secondary text-sm py-2.5 px-5 flex items-center gap-2 hover:border-lens-cyan/50 hover:text-white group"
+                      >
+                        {downloadingPdf ? (
+                          <>
+                            <Loader2 size={15} className="animate-spin text-lens-cyan" />
+                            <span>Generating PDF…</span>
+                          </>
+                        ) : (
+                          <>
+                            <Download size={15} className="text-lens-cyan group-hover:scale-110 transition-transform" />
+                            <span>Download PDF Report</span>
+                          </>
+                        )}
+                      </button>
+
                       <Link href="/match" className="btn-primary text-sm py-2.5 px-5 flex items-center gap-2">
                         <span>Match against Target JD</span>
                         <ArrowRight size={14} />
@@ -358,6 +396,13 @@ export default function UploadPage() {
                         Explore Calibrated Roles
                       </Link>
                     </div>
+
+                    {pdfError && (
+                      <div className="text-xs text-focus-lost font-mono bg-focus-lost-dim border border-focus-lost/30 p-2.5 rounded-lg flex items-center gap-2">
+                        <AlertCircle size={13} className="shrink-0" />
+                        <span>{pdfError}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </ViewfinderFrame>

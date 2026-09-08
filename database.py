@@ -28,8 +28,9 @@ MONGO_URI: str      = os.getenv("MONGO_URI", "mongodb://localhost:27017")
 DATABASE_NAME: str  = os.getenv("DATABASE_NAME", "careerlens")
 
 # Collection names — change here if needed, not scattered across the codebase.
-COLLECTION_VERSIONS: str = "resume_versions"
-COLLECTION_HISTORY:  str = "job_match_history"
+COLLECTION_VERSIONS:   str = "resume_versions"
+COLLECTION_HISTORY:    str = "job_match_history"
+COLLECTION_INTERVIEWS: str = "interview_sessions"
 
 # ---------------------------------------------------------------------------
 # Client lifecycle
@@ -63,6 +64,10 @@ def get_versions_collection() -> AsyncIOMotorCollection:
 
 def get_history_collection() -> AsyncIOMotorCollection:
     return get_client()[DATABASE_NAME][COLLECTION_HISTORY]
+
+
+def get_interviews_collection() -> AsyncIOMotorCollection:
+    return get_client()[DATABASE_NAME][COLLECTION_INTERVIEWS]
 
 
 # ---------------------------------------------------------------------------

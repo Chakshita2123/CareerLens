@@ -39,6 +39,7 @@ Usage
 
 from __future__ import annotations
 
+import asyncio
 import os
 import sys
 import tempfile
@@ -63,7 +64,7 @@ os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
 from bson import ObjectId
 from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 
 # ---------------------------------------------------------------------------
 # Project-level imports (Phases 1–4 + DB layer + Pydantic models)
@@ -75,10 +76,17 @@ try:
     from job_match_scorer import compute_job_match
     from bullet_improver import improve_weak_bullets
     from role_recommender import recommend_roles
+    from pdf_report import build_pdf_report
+    from mock_interview import (
+        generate_interview_questions,
+        evaluate_answer,
+        generate_session_summary,
+    )
     from database import (
         close_client,
         get_history_collection,
         get_versions_collection,
+        get_interviews_collection,
         serialise_doc,
     )
     from models import (
@@ -89,6 +97,19 @@ try:
         ResumeVersionResponse,
         ResumeVersionSummary,
         ScoreDelta,
+        JobDescriptionInput,
+        MultiMatchRequest,
+        MultiMatchResponse,
+        MultiMatchComparisonItem,
+        InterviewQuestion,
+        InterviewFeedback,
+        InterviewAnswerRecord,
+        InterviewStartRequest,
+        InterviewStartResponse,
+        InterviewAnswerRequest,
+        InterviewAnswerResponse,
+        InterviewSessionDetailResponse,
+        InterviewSessionSummaryItem,
     )
 except ImportError:
     sys.path.insert(0, str(Path(__file__).parent))
@@ -98,10 +119,17 @@ except ImportError:
     from job_match_scorer import compute_job_match
     from bullet_improver import improve_weak_bullets
     from role_recommender import recommend_roles
+    from pdf_report import build_pdf_report
+    from mock_interview import (
+        generate_interview_questions,
+        evaluate_answer,
+        generate_session_summary,
+    )
     from database import (
         close_client,
         get_history_collection,
         get_versions_collection,
+        get_interviews_collection,
         serialise_doc,
     )
     from models import (
@@ -112,6 +140,19 @@ except ImportError:
         ResumeVersionResponse,
         ResumeVersionSummary,
         ScoreDelta,
+        JobDescriptionInput,
+        MultiMatchRequest,
+        MultiMatchResponse,
+        MultiMatchComparisonItem,
+        InterviewQuestion,
+        InterviewFeedback,
+        InterviewAnswerRecord,
+        InterviewStartRequest,
+        InterviewStartResponse,
+        InterviewAnswerRequest,
+        InterviewAnswerResponse,
+        InterviewSessionDetailResponse,
+        InterviewSessionSummaryItem,
     )
 
 # ---------------------------------------------------------------------------
@@ -412,7 +453,7 @@ async def match_resume_to_jd(version_id: str, body: MatchRequest):
         )
 
     try:
-        job_match_result = compute_job_match(parsed_data, jd_text)
+        job_match_result = await asyncio.to_thread(compute_job_match, parsed_data, jd_text)
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -442,6 +483,147 @@ async def match_resume_to_jd(version_id: str, body: MatchRequest):
     history_doc["evaluated_at"]      = now
 
     return JobMatchResponse(**serialise_doc(history_doc))
+
+
+# ---------------------------------------------------------------------------
+# Endpoint 3b — POST /resumes/{version_id}/match-multiple  (Multi-JD Comparison)
+# ---------------------------------------------------------------------------
+
+@app.post(
+    "/resumes/{version_id}/match-multiple",
+    response_model=MultiMatchResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Compare a saved resume version against multiple job descriptions",
+    tags=["Job Matching"],
+)
+async def match_resume_to_multiple_jds(version_id: str, body: MultiMatchRequest):
+    """
+    Evaluates a saved resume version against 1 to 4 target job descriptions.
+    Reuses the Phase 3/4 compute_job_match pipeline for each JD independently.
+    Returns an array of comparison results with the best-fit role highlighted.
+    Handles partial failures gracefully so valid JDs still return results.
+    """
+    # 1. Validate version ID and fetch resume document
+    try:
+        oid = ObjectId(version_id)
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"'{version_id}' is not a valid resume version ID.",
+        )
+
+    try:
+        version_doc = await get_versions_collection().find_one({"_id": oid})
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Database read failed: {exc}",
+        )
+
+    if version_doc is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Resume version '{version_id}' not found.",
+        )
+
+    parsed_data = version_doc.get("parsed_data", {})
+    if not parsed_data:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Parsed resume data is empty or missing.",
+        )
+
+    # 2. Iterate through each JD and compute match
+    comparisons: List[MultiMatchComparisonItem] = []
+    best_fit_label: Optional[str] = None
+    best_fit_score: int = -1
+
+    for idx, jd_item in enumerate(body.job_descriptions):
+        label = (jd_item.label or "").strip() or f"Target Role #{idx + 1}"
+        jd_text = jd_item.job_description_text.strip()
+
+        if not jd_text or len(jd_text) < 20:
+            comparisons.append(
+                MultiMatchComparisonItem(
+                    label=label,
+                    job_match_score=0,
+                    breakdown={
+                        "skill_overlap_score": 0.0,
+                        "semantic_similarity_score": 0.0,
+                        "experience_alignment_score": 0.0,
+                    },
+                    matched_skills=[],
+                    related_skills=[],
+                    missing_skills=[],
+                    summary="Job description text was too short to evaluate (minimum 20 characters).",
+                    error="Job description text was too short to evaluate.",
+                )
+            )
+            continue
+
+        try:
+            # Reuses Phase 3 + 4 semantic matching pipeline
+            result = await asyncio.to_thread(compute_job_match, parsed_data, jd_text)
+            score = int(result.get("job_match_score", 0))
+
+            # Persist to job_match_history for audit trail / history
+            try:
+                now = datetime.now(timezone.utc)
+                history_doc = {
+                    "user_id":              version_doc["user_id"],
+                    "resume_version_id":    oid,
+                    "job_description_text": jd_text,
+                    "job_match_result":     result,
+                    "evaluated_at":         now,
+                    "comparison_label":     label,
+                }
+                await get_history_collection().insert_one(history_doc)
+            except Exception:
+                pass  # Non-fatal persistence
+
+            comparisons.append(
+                MultiMatchComparisonItem(
+                    label=label,
+                    job_match_score=score,
+                    breakdown=result.get("breakdown", {}),
+                    matched_skills=result.get("matched_skills", []),
+                    related_skills=result.get("related_skills", []),
+                    missing_skills=result.get("missing_skills", []),
+                    summary=result.get("summary", ""),
+                    error=None,
+                )
+            )
+
+            if score > best_fit_score:
+                best_fit_score = score
+                best_fit_label = label
+
+        except Exception as exc:
+            # Graceful partial failure handling
+            comparisons.append(
+                MultiMatchComparisonItem(
+                    label=label,
+                    job_match_score=0,
+                    breakdown={
+                        "skill_overlap_score": 0.0,
+                        "semantic_similarity_score": 0.0,
+                        "experience_alignment_score": 0.0,
+                    },
+                    matched_skills=[],
+                    related_skills=[],
+                    missing_skills=[],
+                    summary=f"Analysis failed: {exc}",
+                    error=str(exc),
+                )
+            )
+
+    return MultiMatchResponse(
+        resume_version_id=version_id,
+        total_compared=len(comparisons),
+        comparisons=comparisons,
+        best_fit_label=best_fit_label if best_fit_score >= 0 else None,
+        best_fit_score=best_fit_score if best_fit_score >= 0 else None,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -650,7 +832,7 @@ async def get_role_recommendations(
     parsed_data = version_doc.get("parsed_data", {})
 
     try:
-        recommendations = recommend_roles(parsed_data, top_n=top_n)
+        recommendations = await asyncio.to_thread(recommend_roles, parsed_data, top_n=top_n)
         # Strip internal _breakdown key — not needed by the frontend
         for rec in recommendations:
             rec.pop("_breakdown", None)
@@ -666,6 +848,532 @@ async def get_role_recommendations(
         "version_label":     version_doc.get("version_label", ""),
         "recommendations":   recommendations,
     }
+
+
+# ---------------------------------------------------------------------------
+# Endpoint 7 — POST /resumes/{version_id}/export-pdf  (PDF Report Generation)
+# ---------------------------------------------------------------------------
+
+@app.api_route(
+    "/resumes/{version_id}/export-pdf",
+    methods=["POST", "GET"],
+    summary="Download comprehensive resume diagnostic & match analysis as a PDF report",
+    tags=["Reports"],
+)
+async def export_resume_pdf(
+    version_id: str,
+    job_match_id: Optional[str] = Query(
+        default=None,
+        description="Optional job match history ID to include target JD match analysis in the report.",
+    ),
+):
+    """
+    Generates a publication-grade light-mode PDF report for a saved resume version.
+    Includes ATS score breakdown, diagnostic feedback, top priority issues,
+    and (if job_match_id is provided) full job match fit analysis and top role recommendations.
+    """
+    # 1. Validate version ID
+    try:
+        oid = ObjectId(version_id)
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"'{version_id}' is not a valid resume version ID.",
+        )
+
+    try:
+        version_doc = await get_versions_collection().find_one({"_id": oid})
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Database read failed: {exc}",
+        )
+
+    if version_doc is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Resume version '{version_id}' not found.",
+        )
+
+    # 2. Optionally fetch job match result
+    match_doc = None
+    if job_match_id:
+        try:
+            m_oid = ObjectId(job_match_id)
+            match_doc = await get_history_collection().find_one({"_id": m_oid})
+        except Exception:
+            match_doc = None
+
+    # 3. Top role recommendations
+    recommendations = None
+    try:
+        parsed_data = version_doc.get("parsed_data", {})
+        if parsed_data:
+            recommendations = await asyncio.to_thread(recommend_roles, parsed_data, top_n=3)
+            for rec in recommendations:
+                rec.pop("_breakdown", None)
+    except Exception:
+        recommendations = None
+
+    # 4. Generate PDF bytes
+    try:
+        pdf_bytes = await asyncio.to_thread(
+            build_pdf_report,
+            version_doc=version_doc,
+            match_doc=match_doc,
+            recommendations=recommendations,
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate PDF report: {exc}",
+        )
+
+    # 5. Formulate clean filename
+    raw_name = Path(version_doc.get("raw_filename", "resume")).stem
+    clean_stem = "".join(c for c in raw_name if c.isalnum() or c in ("-", "_")).strip() or "resume"
+    filename = f"careerlens_report_{clean_stem}.pdf"
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Access-Control-Expose-Headers": "Content-Disposition",
+        },
+    )
+
+
+def _generate_sample_report_file(out_path: Path) -> None:
+    """Generates a sample report PDF file from mock data to verify report rendering."""
+    sample_version = {
+        "_id": "6650a1b2c3d4e5f6a7b8c9d0",
+        "user_id": "test-user-demo",
+        "version_label": "v2 - Senior Full-Stack Engineer Focus",
+        "uploaded_at": datetime.now(timezone.utc),
+        "raw_filename": "Alex_Mercer_Resume.pdf",
+        "parsed_data": {
+            "contact_info": {
+                "name": "Alex Mercer",
+                "email": "alex.mercer@devmail.io",
+                "phone": "+1 (555) 234-5678",
+                "linkedin": "linkedin.com/in/alex-mercer",
+                "github": "github.com/alexmercer",
+            },
+            "skills": [
+                "React", "TypeScript", "Python", "FastAPI", "Docker",
+                "PostgreSQL", "Redis", "Kubernetes", "Next.js", "GraphQL", "AWS", "Git"
+            ],
+            "experience": [
+                {
+                    "title_company": "Senior Software Engineer — CloudScale Inc.",
+                    "dates": "2022 - Present",
+                    "bullets": [
+                        "Architected event-driven microservices with FastAPI and Kafka, reducing p99 latency by 35%.",
+                        "Led migration of monolithic frontend to Next.js and TypeScript, improving Core Web Vitals score to 96.",
+                    ]
+                }
+            ],
+            "education": [{"raw": "B.S. in Computer Science — Tech University", "dates": "2018 - 2022"}],
+            "projects": [],
+            "certifications": ["AWS Certified Solutions Architect"]
+        },
+        "ats_score": {
+            "overall_score": 86,
+            "breakdown": [
+                {"category": "Section Completeness", "score": 20, "max_score": 20, "feedback": "All primary sections detected: Contact, Experience, Education, Skills."},
+                {"category": "Contact Information", "score": 10, "max_score": 10, "feedback": "Complete contact block with verified email, phone, and professional GitHub/LinkedIn URLs."},
+                {"category": "Bullet Point Quality", "score": 18, "max_score": 20, "feedback": "Strong action verbs (Architected, Led) and quantifiable metrics throughout bullets."},
+                {"category": "Bullet Point Usage", "score": 15, "max_score": 15, "feedback": "Well-structured bulleted experience entries; high parsing readability."},
+                {"category": "Resume Length", "score": 10, "max_score": 10, "feedback": "Estimated 520 words. Well within the optimal 400-800 word window."},
+                {"category": "Skill Density", "score": 8, "max_score": 10, "feedback": "Good density across technical skills without keyword redundancy."},
+                {"category": "Formatting & Layout", "score": 15, "max_score": 15, "feedback": "Clean single-column structure with standard header hierarchy."}
+            ],
+            "top_issues": [
+                "Add quantified latency or revenue impact to project descriptions",
+                "Consider grouping backend vs frontend skills for faster recruiter visual scan"
+            ]
+        }
+    }
+
+    sample_match = {
+        "job_match_result": {
+            "job_match_score": 88,
+            "breakdown": {
+                "skill_overlap_score": 92.0,
+                "semantic_similarity_score": 85.5,
+                "experience_alignment_score": 86.0
+            },
+            "matched_skills": ["React", "TypeScript", "Python", "FastAPI", "Docker", "PostgreSQL", "Git"],
+            "related_skills": [
+                {"resume_skill": "PostgreSQL", "jd_term": "Relational Databases / SQL", "similarity": 0.93},
+                {"resume_skill": "Docker", "jd_term": "Container Orchestration", "similarity": 0.88},
+                {"resume_skill": "FastAPI", "jd_term": "High-Throughput Microservices", "similarity": 0.84}
+            ],
+            "missing_skills": ["Kubernetes Helm Charts", "Terraform / IaC"],
+            "summary": "Strong alignment with the Senior Full-Stack role. Demonstrated proficiency across core frontend (React/TypeScript) and backend (FastAPI/PostgreSQL) requirements with solid containerization background."
+        }
+    }
+
+    sample_recs = [
+        {
+            "role_title": "Full-Stack Developer",
+            "match_score": 91,
+            "matched_skills": ["React", "TypeScript", "Python", "PostgreSQL", "Docker"],
+            "gap_summary": "Exceptional fit with core web and API stack. Adding CI/CD pipeline examples will close remaining gaps."
+        },
+        {
+            "role_title": "Backend Developer",
+            "match_score": 85,
+            "matched_skills": ["Python", "FastAPI", "PostgreSQL", "Redis", "Docker"],
+            "gap_summary": "Strong server-side API foundation. Further highlight distributed caching and messaging patterns."
+        },
+        {
+            "role_title": "DevOps Engineer",
+            "match_score": 72,
+            "matched_skills": ["Docker", "Kubernetes", "AWS", "Git"],
+            "gap_summary": "Solid container baseline; recommend adding Infrastructure-as-Code and deployment automation."
+        }
+    ]
+
+    pdf_bytes = build_pdf_report(sample_version, sample_match, sample_recs)
+    out_path.write_bytes(pdf_bytes)
+
+
+# ---------------------------------------------------------------------------
+# Endpoint 8 — Interactive Mock Interview (Phase 8 Extension)
+# ---------------------------------------------------------------------------
+
+@app.post(
+    "/interviews/start",
+    response_model=InterviewStartResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Start an interactive mock interview session",
+    tags=["Mock Interview"],
+)
+async def start_mock_interview(body: InterviewStartRequest):
+    """
+    Initializes a new text-based mock interview session tailored to the user's
+    resume version and optional target job description. Generates a multi-turn
+    question set (warm-up, behavioral STAR, technical depth) and returns Question #1.
+    """
+    # 1. Validate version ID
+    try:
+        oid = ObjectId(body.resume_version_id)
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"'{body.resume_version_id}' is not a valid resume version ID.",
+        )
+
+    try:
+        version_doc = await get_versions_collection().find_one({"_id": oid})
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Database read failed: {exc}",
+        )
+
+    if version_doc is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Resume version '{body.resume_version_id}' not found.",
+        )
+
+    # 2. Fetch optional job match JD text
+    jd_text: Optional[str] = None
+    m_oid: Optional[ObjectId] = None
+    if body.job_match_id:
+        try:
+            m_oid = ObjectId(body.job_match_id)
+            match_doc = await get_history_collection().find_one({"_id": m_oid})
+            if match_doc:
+                jd_text = match_doc.get("job_description_text")
+        except Exception:
+            m_oid = None
+
+    parsed_data = version_doc.get("parsed_data", {})
+
+    # 3. Generate questions in threadpool
+    try:
+        questions = await asyncio.to_thread(
+            generate_interview_questions,
+            parsed_resume=parsed_data,
+            jd_text=jd_text,
+            num_questions=body.num_questions,
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate interview questions: {exc}",
+        )
+
+    if not questions:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to formulate questions for this profile.",
+        )
+
+    # 4. Create and persist session document
+    now = datetime.now(timezone.utc)
+    session_doc = {
+        "user_id":                version_doc["user_id"],
+        "resume_version_id":       oid,
+        "job_match_id":           m_oid,
+        "status":                 "in_progress",
+        "questions":              questions,
+        "answers":                [],
+        "current_question_index": 0,
+        "is_complete":            False,
+        "summary":                None,
+        "created_at":             now,
+        "updated_at":             now,
+    }
+
+    try:
+        result = await get_interviews_collection().insert_one(session_doc)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Database write failed: {exc}",
+        )
+
+    session_id_str = str(result.inserted_id)
+
+    return InterviewStartResponse(
+        _id=session_id_str,
+        user_id=str(version_doc["user_id"]),
+        resume_version_id=str(body.resume_version_id),
+        job_match_id=str(body.job_match_id) if body.job_match_id else None,
+        total_questions=len(questions),
+        current_question_index=0,
+        first_question=InterviewQuestion(**questions[0]),
+        created_at=now,
+    )
+
+
+@app.post(
+    "/interviews/{session_id}/answer",
+    response_model=InterviewAnswerResponse,
+    summary="Submit an answer to the current interview question and receive critique",
+    tags=["Mock Interview"],
+)
+async def submit_interview_answer(session_id: str, body: InterviewAnswerRequest):
+    """
+    Submits candidate's answer for the active question, invokes LLM critique
+    (strengths, improvements, suggested STAR angle, score), persists to history,
+    and returns feedback plus the next question (or final summary if complete).
+    """
+    try:
+        s_oid = ObjectId(session_id)
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"'{session_id}' is not a valid interview session ID.",
+        )
+
+    try:
+        session_doc = await get_interviews_collection().find_one({"_id": s_oid})
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Database read failed: {exc}",
+        )
+
+    if session_doc is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Interview session '{session_id}' not found.",
+        )
+
+    if session_doc.get("is_complete", False):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This interview session is already complete.",
+        )
+
+    questions = session_doc.get("questions", [])
+    curr_idx = session_doc.get("current_question_index", 0)
+
+    if curr_idx >= len(questions):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="All questions in this session have already been answered.",
+        )
+
+    active_question = questions[curr_idx]
+
+    # Fetch resume + JD context for critique grounding
+    parsed_data = {}
+    jd_text = None
+    try:
+        v_doc = await get_versions_collection().find_one({"_id": session_doc["resume_version_id"]})
+        if v_doc:
+            parsed_data = v_doc.get("parsed_data", {})
+        if session_doc.get("job_match_id"):
+            m_doc = await get_history_collection().find_one({"_id": session_doc["job_match_id"]})
+            if m_doc:
+                jd_text = m_doc.get("job_description_text")
+    except Exception:
+        pass
+
+    # Evaluate answer in worker threadpool
+    try:
+        feedback = await asyncio.to_thread(
+            evaluate_answer,
+            question=active_question,
+            answer=body.answer.strip(),
+            parsed_resume=parsed_data,
+            jd_text=jd_text,
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Answer evaluation failed: {exc}",
+        )
+
+    now = datetime.now(timezone.utc)
+    answer_record = {
+        "question_index": curr_idx,
+        "question":       active_question.get("question", ""),
+        "category":       active_question.get("category", ""),
+        "answer_text":    body.answer.strip(),
+        "feedback":       feedback,
+        "answered_at":    now,
+    }
+
+    answers = session_doc.get("answers", [])
+    updated_answers = answers + [answer_record]
+    next_idx = curr_idx + 1
+    is_complete = next_idx >= len(questions)
+
+    session_summary = None
+    if is_complete:
+        feedback_list = [a["feedback"] for a in updated_answers]
+        try:
+            session_summary = await asyncio.to_thread(
+                generate_session_summary,
+                questions=questions,
+                answers=updated_answers,
+                feedback_list=feedback_list,
+            )
+        except Exception:
+            session_summary = None
+
+    update_fields = {
+        "answers":                updated_answers,
+        "current_question_index": next_idx,
+        "is_complete":            is_complete,
+        "status":                 "completed" if is_complete else "in_progress",
+        "updated_at":             now,
+    }
+    if session_summary:
+        update_fields["summary"] = session_summary
+
+    try:
+        await get_interviews_collection().update_one(
+            {"_id": s_oid},
+            {"$set": update_fields}
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Database update failed: {exc}",
+        )
+
+    next_q = InterviewQuestion(**questions[next_idx]) if not is_complete else None
+
+    return InterviewAnswerResponse(
+        session_id=session_id,
+        question_index=curr_idx,
+        feedback=InterviewFeedback(**feedback),
+        is_complete=is_complete,
+        current_question_index=next_idx,
+        next_question=next_q,
+        summary=session_summary,
+    )
+
+
+@app.get(
+    "/interviews/{session_id}",
+    response_model=InterviewSessionDetailResponse,
+    summary="Get full details of an interview session",
+    tags=["Mock Interview"],
+)
+async def get_interview_session(session_id: str):
+    """
+    Returns full state of an interview session, including all questions,
+    user answers, turn-by-turn critiques, and completion summary if available.
+    """
+    try:
+        s_oid = ObjectId(session_id)
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"'{session_id}' is not a valid interview session ID.",
+        )
+
+    try:
+        session_doc = await get_interviews_collection().find_one({"_id": s_oid})
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Database read failed: {exc}",
+        )
+
+    if session_doc is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Interview session '{session_id}' not found.",
+        )
+
+    return InterviewSessionDetailResponse(**serialise_doc(session_doc))
+
+
+@app.get(
+    "/interviews/user/{user_id}",
+    response_model=List[InterviewSessionSummaryItem],
+    summary="List all mock interview sessions for a user",
+    tags=["Mock Interview"],
+)
+async def list_user_interviews(user_id: str):
+    """
+    Returns a history of all interview sessions started by this user,
+    ordered by date descending.
+    """
+    try:
+        cursor = get_interviews_collection().find({"user_id": user_id}).sort("created_at", -1)
+        docs = await cursor.to_list(length=50)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Database read failed: {exc}",
+        )
+
+    summaries: List[InterviewSessionSummaryItem] = []
+    for doc in docs:
+        sd = serialise_doc(doc)
+        answers = sd.get("answers", [])
+        scores = [a.get("feedback", {}).get("score") for a in answers if a.get("feedback", {}).get("score") is not None]
+        avg = round(sum(scores) / len(scores), 1) if scores else None
+        verdict = sd.get("summary", {}).get("overall_verdict") if sd.get("summary") else None
+
+        summaries.append(
+            InterviewSessionSummaryItem(
+                _id=sd["_id"],
+                user_id=sd["user_id"],
+                resume_version_id=str(sd.get("resume_version_id", "")),
+                job_match_id=str(sd["job_match_id"]) if sd.get("job_match_id") else None,
+                status=sd.get("status", "in_progress"),
+                total_questions=len(sd.get("questions", [])),
+                answered_questions=len(answers),
+                average_score=avg,
+                overall_verdict=verdict,
+                created_at=sd["created_at"],
+            )
+        )
+
+    return summaries
 
 
 # ---------------------------------------------------------------------------

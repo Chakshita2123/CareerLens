@@ -3,17 +3,23 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 
 /**
  * Persist a value to localStorage, hydrating safely on the client only.
- * Avoids SSR mismatch by returning the initialValue during server render.
+ *
+ * Uses a lazy useState initializer to read from localStorage synchronously
+ * on the first client render (skipped entirely on the server to avoid SSR
+ * hydration mismatches). This eliminates the two-render race condition where
+ * the value was '' on render-1 and only populated after a useEffect fired.
  */
 export function useLocalStorage<T>(key: string, initialValue: T) {
-  const [stored, setStored] = useState<T>(initialValue)
-
-  useEffect(() => {
+  const [stored, setStored] = useState<T>(() => {
+    // On the server (SSR/RSC) localStorage does not exist — return the default.
+    if (typeof window === 'undefined') return initialValue
     try {
       const item = window.localStorage.getItem(key)
-      if (item) setStored(JSON.parse(item) as T)
-    } catch {}
-  }, [key])
+      return item !== null ? (JSON.parse(item) as T) : initialValue
+    } catch {
+      return initialValue
+    }
+  })
 
   const set = useCallback(
     (value: T) => {
@@ -29,18 +35,28 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
 }
 
 /**
- * Generate and persist a random user ID in localStorage.
+ * Generate and persist a stable random user ID in localStorage.
  * Used as a stand-in for real auth (Phase 6 scope constraint).
+ *
+ * The ID is generated synchronously in the lazy useState initializer so it
+ * is available on render-1 — no useEffect delay, no empty-string window.
  */
 export function useUserId(): string {
-  const [userId, setUserId] = useLocalStorage<string>('cl_user_id', '')
-
-  useEffect(() => {
-    if (!userId) {
+  const [userId] = useState<string>(() => {
+    if (typeof window === 'undefined') return ''
+    try {
+      const existing = window.localStorage.getItem('cl_user_id')
+      if (existing) return existing
+      // Generate a new persistent ID and write it immediately.
       const id = `user_${Math.random().toString(36).slice(2, 10)}`
-      setUserId(id)
+      window.localStorage.setItem('cl_user_id', id)
+      return id
+    } catch {
+      // localStorage blocked (private-browsing restrictions, etc.)
+      // Fall back to a session-scoped ID so the page still works.
+      return `user_${Math.random().toString(36).slice(2, 10)}`
     }
-  }, [userId, setUserId])
+  })
 
   return userId
 }
