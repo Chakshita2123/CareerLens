@@ -148,4 +148,57 @@
       radial-gradient(circle at center, rgba(0, 240, 255, 0.08) 1px, transparent 1px);
     background-size: 16px 16px;
   }
+
+  /* ─── Ambient Bokeh Drift Keyframes ───────────────────────────── */
+  @keyframes ambient-drift-cyan {
+    0%, 100% {
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+    33% {
+      transform: translate3d(65px, 45px, 0) scale(1.08);
+    }
+    66% {
+      transform: translate3d(-40px, 60px, 0) scale(0.94);
+    }
+  }
+
+  @keyframes ambient-drift-violet {
+    0%, 100% {
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+    33% {
+      transform: translate3d(-60px, -45px, 0) scale(0.92);
+    }
+    66% {
+      transform: translate3d(45px, -30px, 0) scale(1.07);
+    }
+  }
+
+  @keyframes ambient-drift-sapphire {
+    0%, 100% {
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+    50% {
+      transform: translate3d(50px, -50px, 0) scale(1.05);
+    }
+  }
+
+  .ambient-orb-cyan {
+    animation: ambient-drift-cyan 28s ease-in-out infinite;
+  }
+
+  .ambient-orb-violet {
+    animation: ambient-drift-violet 34s ease-in-out infinite;
+  }
+
+  .ambient-orb-sapphire {
+    animation: ambient-drift-sapphire 30s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ambient-bokeh-orb {
+      animation: none !important;
+    }
+  }
 }
+
