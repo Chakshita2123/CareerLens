@@ -11,8 +11,8 @@
 
 # --- PyTorch (CPU-only) ---
 # Pinned with +cpu suffix so pip always picks the CPU wheel.
-# sentence-transformers >=3.0 is compatible with torch 2.4.x.
-torch==2.4.0+cpu
+torch==2.14.0+cpu
+
 
 # --- NLP / embeddings ---
 sentence-transformers>=3.0.0,<4.0.0
