@@ -1,18 +1,42 @@
+# ============================================================
+# CareerLens — Python dependencies
+# ============================================================
+# CPU-only PyTorch index — must come FIRST so pip resolves
+# torch from PyTorch's CPU wheel index and never pulls the
+# CUDA build. This eliminates the nvidia-cublas / nvidia-cudnn
+# / triton stack (~2 GB+) that the default PyPI torch wheel
+# drags in, keeping us within Render's free-tier limits.
+# ============================================================
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+# --- PyTorch (CPU-only) ---
+# Pinned with +cpu suffix so pip always picks the CPU wheel.
+# sentence-transformers >=3.0 is compatible with torch 2.4.x.
+torch==2.4.0+cpu
+
+# --- NLP / embeddings ---
+sentence-transformers>=3.0.0,<4.0.0
+numpy>=1.24.0,<2.0.0
+
+# --- Resume parsing ---
 pdfplumber>=0.10.0
 python-docx>=1.1.0
-reportlab>=4.0.0
-sentence-transformers>=3.0.0
-numpy>=1.24.0
 
-# Phase 6 — API + persistence
+# --- PDF report generation ---
+reportlab>=4.0.0
+
+# --- API layer ---
 fastapi>=0.111.0
 uvicorn[standard]>=0.29.0
-motor>=3.4.0
-pymongo>=4.7.0
-python-dotenv>=1.0.0
 python-multipart>=0.0.9
 
-# Phase 7 — LLM bullet improvement (both optional; mock fallback used if neither key is set)
+# --- Database ---
+motor>=3.4.0
+pymongo>=4.7.0
+
+# --- Config ---
+python-dotenv>=1.0.0
+
+# --- LLM integrations (optional; mock fallback if keys absent) ---
 google-generativeai>=0.7.0
 groq>=0.9.0
-

@@ -24,7 +24,7 @@ load_dotenv()
 # ---------------------------------------------------------------------------
 # Config — overridable via environment
 # ---------------------------------------------------------------------------
-MONGO_URI: str      = os.getenv("MONGO_URI", "mongodb://localhost:27017")
+MONGO_URI: str = os.getenv("MONGODB_URI", "mongodb://localhost:27017")
 DATABASE_NAME: str  = os.getenv("DATABASE_NAME", "careerlens")
 
 # Collection names — change here if needed, not scattered across the codebase.
