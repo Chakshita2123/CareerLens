@@ -345,7 +345,7 @@ export default function InterviewPage() {
                                 {v.version_label}
                               </span>
                               <span className="font-mono text-xs text-lens-cyan font-bold">
-                                ATS {v.overall_ats_score}/100
+                                ATS {v.ats_score.overall_score}/100
                               </span>
                             </div>
                             <span className="text-[11px] text-slate-400 font-mono truncate">{v.raw_filename}</span>
