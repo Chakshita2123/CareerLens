@@ -11,7 +11,7 @@
 
 # --- PyTorch (CPU-only) ---
 # Pinned with +cpu suffix so pip always picks the CPU wheel.
-torch==2.4.0+cpu
+torch==2.14.0+cpu
 
 
 # --- NLP / embeddings ---
