@@ -56,10 +56,13 @@ COPY . .
 # Real secrets are injected at runtime via HF Spaces' Secrets UI (Settings →
 # Repository secrets). Never bake credentials into the image.
 # ---------------------------------------------------------------------------
-ENV MONGO_URI=""
+# NOTE: variable MUST be MONGODB_URI — matches what database.py reads via os.getenv.
+ENV MONGODB_URI=""
 ENV DATABASE_NAME="careerlens"
 ENV GEMINI_API_KEY=""
 ENV GROQ_API_KEY=""
+# Comma-separated extra CORS origins (e.g. your custom domain if different from Render).
+ENV ALLOWED_ORIGINS=""
 
 # Redirect HuggingFace / sentence-transformers model cache into /app/.hf_cache
 # (same path that main.py already sets via os.environ.setdefault).

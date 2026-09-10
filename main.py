@@ -181,13 +181,21 @@ app = FastAPI(
     version="0.8.0",
 )
 
-# CORS — allow the Next.js dev server and any future production origin.
-# Adjust allow_origins for production (replace * with your actual domain).
+# CORS — allow the Next.js dev server and the production Render origin.
+# ALLOWED_ORIGINS env var can extend this list at runtime (comma-separated URLs).
+_EXTRA_ORIGINS: list[str] = [
+    o.strip()
+    for o in os.getenv("ALLOWED_ORIGINS", "").split(",")
+    if o.strip()
+]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
         "http://127.0.0.1:3000",
+        # Production Render frontend
+        "https://careerlens-1-y5zn.onrender.com",
+        *_EXTRA_ORIGINS,
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -321,6 +329,7 @@ async def upload_resume(
     # -- Write to a temp file for Phase 1 parser ---------------------------
     # NamedTemporaryFile with delete=False lets the parser open it by path on Windows
     # (Windows locks the file while it's open by the same process otherwise).
+    _MAX_FILE_BYTES = 10 * 1024 * 1024  # 10 MB — matches the UI contract
     tmp_path: Optional[str] = None
     try:
         with tempfile.NamedTemporaryFile(
@@ -328,6 +337,11 @@ async def upload_resume(
         ) as tmp:
             tmp_path = tmp.name
             content = await file.read()
+            if len(content) > _MAX_FILE_BYTES:
+                raise HTTPException(
+                    status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                    detail=f"File too large ({len(content) // (1024*1024)} MB). Maximum allowed size is 10 MB.",
+                )
             tmp.write(content)
 
         # -- Phase 1: parse ------------------------------------------------
