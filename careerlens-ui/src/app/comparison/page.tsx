@@ -16,6 +16,7 @@ import {
 import { ApertureGauge } from '@/components/ui/ApertureGauge'
 import { ViewfinderFrame } from '@/components/ui/ViewfinderFrame'
 import { ApertureSpinner } from '@/components/ui/Skeleton'
+import { StatusAlert } from '@/components/ui/StatusAlert'
 import Link from 'next/link'
 
 // ─── Delta Badge ──────────────────────────────────────────────────────────────
@@ -471,8 +472,22 @@ export default function ComparisonPage() {
         {/* Optical loading state */}
         {loading && <OpticalLoadingState />}
 
-        {/* Empty / error state */}
-        {!loading && error && <OpticalEmptyState />}
+        {/* Error state */}
+        {!loading && error && (
+          <div className="max-w-4xl mx-auto">
+            <StatusAlert
+              variant={error.includes('waking up') || error.includes('Render') ? 'cold-start' : 'error'}
+              title={error.includes('waking up') ? 'Backend Initializing' : 'Timeline History Alert'}
+              message={error}
+              onDismiss={() => setError(null)}
+              onRetry={fetchComparison}
+              retryLabel="Retry Loading Timeline"
+            />
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!loading && !error && (!data || totalVersions === 0) && <OpticalEmptyState />}
 
         {/* Populated State */}
         <AnimatePresence>

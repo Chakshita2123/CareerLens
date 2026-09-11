@@ -13,6 +13,7 @@ import { ApertureGauge } from '@/components/ui/ApertureGauge'
 import { ViewfinderFrame } from '@/components/ui/ViewfinderFrame'
 import { ScanSweep } from '@/components/ui/ScanSweep'
 import { SkeletonRing, SkeletonCard } from '@/components/ui/Skeleton'
+import { StatusAlert } from '@/components/ui/StatusAlert'
 import Link from 'next/link'
 
 function scoreColor(ratio: number) {
@@ -30,8 +31,18 @@ function BreakdownCard({ item }: { item: ATSBreakdownItem }) {
   return (
     <motion.div
       layout
-      className={`border rounded-xl p-4 cursor-pointer transition-all duration-200 ${color} hover:opacity-95 relative group`}
+      role="button"
+      tabIndex={0}
+      aria-expanded={open}
+      aria-label={`${item.category}: ${item.score} out of ${item.max_score} points. Click to ${open ? 'collapse' : 'expand'} diagnostic feedback.`}
+      className={`border rounded-xl p-4 cursor-pointer transition-all duration-200 ${color} hover:opacity-95 relative group focus:outline-none focus:ring-2 focus:ring-lens-cyan/60`}
       onClick={() => setOpen(o => !o)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          setOpen(o => !o)
+        }
+      }}
     >
       {/* Corner optical ticks */}
       <span className="absolute top-1 left-1 w-1.5 h-1.5 border-t border-l border-current opacity-40 group-hover:opacity-100" />
@@ -285,17 +296,23 @@ export default function UploadPage() {
         </motion.div>
 
         {/* Error Alert */}
-        {error && (
-          <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="max-w-3xl mx-auto flex items-center gap-3 bg-focus-lost-dim border border-focus-lost/30
-                       rounded-2xl px-5 py-4 text-focus-lost text-sm shadow-md font-mono"
-          >
-            <AlertCircle size={18} className="shrink-0" />
-            <span>{error}</span>
-          </motion.div>
-        )}
+        <AnimatePresence>
+          {error && (
+            <div className="max-w-3xl mx-auto">
+              <StatusAlert
+                variant={error.includes('waking up') || error.includes('Render') ? 'cold-start' : 'error'}
+                title={error.includes('waking up') ? 'Backend Initializing' : 'Upload Alert'}
+                message={error}
+                onDismiss={() => setError(null)}
+                onRetry={() => {
+                  setError(null)
+                  document.getElementById('file-input')?.click()
+                }}
+                retryLabel="Select File Again"
+              />
+            </div>
+          )}
+        </AnimatePresence>
 
         {/* Loading Skeletons */}
         {loading && (

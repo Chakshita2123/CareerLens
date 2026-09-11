@@ -38,6 +38,7 @@ import {
   InterviewSessionDetail,
   InterviewSessionSummaryItem,
 } from '@/lib/api'
+import { StatusAlert } from '@/components/ui/StatusAlert'
 
 // ─── Optical Aperture Spinning Component ─────────────────────────────────────
 
@@ -290,9 +291,15 @@ export default function InterviewPage() {
 
         {/* Global Error Banner */}
         {error && (
-          <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-sm flex items-center gap-3">
-            <AlertTriangle size={18} className="text-red-400 shrink-0" />
-            <span>{error}</span>
+          <div className="mb-6">
+            <StatusAlert
+              variant={error.includes('waking up') || error.includes('Render') ? 'cold-start' : 'error'}
+              title={error.includes('waking up') ? 'Backend Initializing' : 'Interview Session Alert'}
+              message={error}
+              onDismiss={() => setError(null)}
+              onRetry={sessionId ? undefined : handleStartSession}
+              retryLabel="Retry Starting Session"
+            />
           </div>
         )}
 

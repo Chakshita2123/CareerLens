@@ -175,18 +175,70 @@ export interface ComparisonResponse {
   versions: ComparisonEntry[]
 }
 
-// ─── API helpers ──────────────────────────────────────────────────────────────
+// ─── API helpers & Error Handling ─────────────────────────────────────────────
+
+export interface HealthStatus {
+  status: string
+  version?: string
+  model_loaded?: boolean
+  llm_provider?: string
+}
+
+/**
+ * Translates low-level network or HTTP errors into friendly, actionable messages.
+ * Catches Render free-tier cold start delays and provides reassurance.
+ */
+function formatApiError(status: number | null, detail?: string, originalError?: unknown): string {
+  if (originalError instanceof TypeError && originalError.message.includes('fetch')) {
+    return 'Unable to reach the CareerLens backend service. If the server is waking up on Render (cold start), this can take 30–50 seconds. Please wait a moment and try again.'
+  }
+
+  if (status === 503) {
+    return 'The CareerLens database is temporarily unreachable. Please wait a few seconds while the service reconnects and try again.'
+  }
+  if (status === 504 || status === 408) {
+    return 'The request timed out while processing. The backend may be warming up or processing a heavy file. Please retry.'
+  }
+  if (status === 413) {
+    return 'The uploaded file is too large. Maximum allowed size is 10 MB.'
+  }
+  if (status === 415) {
+    return 'Unsupported file format. Please upload a .pdf or .docx resume file.'
+  }
+  if (status === 404) {
+    return detail || 'The requested resume or analysis record could not be found.'
+  }
+  if (status === 400) {
+    return detail || 'Invalid request. Please check your inputs and try again.'
+  }
+  if (status && status >= 500) {
+    return detail ? `Server error: ${detail}` : 'An unexpected server error occurred. Please retry in a moment.'
+  }
+
+  return detail || (originalError instanceof Error ? originalError.message : 'An unexpected network error occurred.')
+}
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
-    ...init,
-    headers: { 'Content-Type': 'application/json', ...init?.headers },
-  })
+  let res: Response
+  try {
+    res = await fetch(`${BASE}${path}`, {
+      ...init,
+      headers: { 'Content-Type': 'application/json', ...init?.headers },
+    })
+  } catch (err: unknown) {
+    throw new Error(formatApiError(null, undefined, err))
+  }
+
   if (!res.ok) {
     const body = await res.json().catch(() => ({ detail: res.statusText }))
-    throw new Error(body?.detail ?? `HTTP ${res.status}`)
+    throw new Error(formatApiError(res.status, body?.detail))
   }
   return res.json() as Promise<T>
+}
+
+/** Ping the backend health check endpoint. Useful for testing cold starts. */
+export async function checkBackendHealth(): Promise<HealthStatus> {
+  return apiFetch<HealthStatus>('/')
 }
 
 // ─── Endpoint wrappers ────────────────────────────────────────────────────────
@@ -202,10 +254,16 @@ export async function uploadResume(
   fd.append('user_id', userId)
   fd.append('version_label', versionLabel)
 
-  const res = await fetch(`${BASE}/resumes/upload`, { method: 'POST', body: fd })
+  let res: Response
+  try {
+    res = await fetch(`${BASE}/resumes/upload`, { method: 'POST', body: fd })
+  } catch (err: unknown) {
+    throw new Error(formatApiError(null, undefined, err))
+  }
+
   if (!res.ok) {
     const body = await res.json().catch(() => ({ detail: res.statusText }))
-    throw new Error(body?.detail ?? `HTTP ${res.status}`)
+    throw new Error(formatApiError(res.status, body?.detail))
   }
   return res.json()
 }

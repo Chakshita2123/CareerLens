@@ -11,6 +11,7 @@ import { improveBullets, listVersions } from '@/lib/api'
 import type { BulletImprovement, ResumeVersion } from '@/lib/api'
 import { ViewfinderFrame } from '@/components/ui/ViewfinderFrame'
 import { ApertureSpinner, SkeletonCard } from '@/components/ui/Skeleton'
+import { StatusAlert } from '@/components/ui/StatusAlert'
 import Link from 'next/link'
 
 const PROVIDER_BADGE: Record<string, { label: string; cls: string }> = {
@@ -167,6 +168,7 @@ function BulletCard({ item, index }: { item: BulletImprovement; index: number })
                   <button
                     type="button"
                     onClick={() => copy(currentSuggestion)}
+                    aria-label="Copy rewritten bullet point to clipboard"
                     className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition-all duration-200 ${
                       copied
                         ? 'bg-focus-locked text-black shadow-[0_0_14px_rgba(0,230,118,0.5)] scale-95'
@@ -347,10 +349,14 @@ export default function ImprovePage() {
               )}
 
               {error && (
-                <div className="flex items-center gap-2 text-focus-lost text-xs p-3 bg-focus-lost-dim border border-focus-lost/30 rounded-xl font-mono">
-                  <AlertCircle size={15} className="shrink-0" />
-                  <span>{error}</span>
-                </div>
+                <StatusAlert
+                  variant={error.includes('waking up') || error.includes('Render') ? 'cold-start' : 'error'}
+                  title={error.includes('waking up') ? 'Backend Initializing' : 'Enhancement Alert'}
+                  message={error}
+                  onDismiss={() => setError(null)}
+                  onRetry={fetchImprovements}
+                  retryLabel="Retry Enhancement"
+                />
               )}
             </div>
           </ViewfinderFrame>

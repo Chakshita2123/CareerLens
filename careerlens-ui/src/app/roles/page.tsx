@@ -14,6 +14,7 @@ import { ViewfinderFrame } from '@/components/ui/ViewfinderFrame'
 import { SkillChip } from '@/components/ui/SkillChip'
 import { ApertureSpinner, SkeletonCard } from '@/components/ui/Skeleton'
 import { ScanSweep } from '@/components/ui/ScanSweep'
+import { StatusAlert } from '@/components/ui/StatusAlert'
 import Link from 'next/link'
 
 function scoreBadge(score: number) {
@@ -202,6 +203,8 @@ function RoleCardContent({
           <button
             type="button"
             onClick={() => setExpanded((e) => !e)}
+            aria-expanded={expanded}
+            aria-label={`${expanded ? 'Collapse' : 'Inspect'} skill breakdown for ${rec.role_title}`}
             className="inline-flex items-center gap-1 text-xs font-semibold text-lens-cyan hover:text-white transition-colors"
           >
             <span>{expanded ? 'Collapse Breakdown' : 'Inspect Full Reticle'}</span>
@@ -388,10 +391,14 @@ export default function RolesPage() {
               )}
 
               {error && (
-                <div className="flex items-center gap-2 text-focus-lost text-xs p-3 bg-focus-lost-dim border border-focus-lost/30 rounded-xl font-mono">
-                  <AlertCircle size={15} className="shrink-0" />
-                  <span>{error}</span>
-                </div>
+                <StatusAlert
+                  variant={error.includes('waking up') || error.includes('Render') ? 'cold-start' : 'error'}
+                  title={error.includes('waking up') ? 'Backend Initializing' : 'Recommendation Alert'}
+                  message={error}
+                  onDismiss={() => setError(null)}
+                  onRetry={fetchRecs}
+                  retryLabel="Retry Recommendations"
+                />
               )}
             </div>
           </ViewfinderFrame>

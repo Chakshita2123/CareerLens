@@ -14,6 +14,7 @@ import { ApertureGauge } from '@/components/ui/ApertureGauge'
 import { ViewfinderFrame } from '@/components/ui/ViewfinderFrame'
 import { SkillChip } from '@/components/ui/SkillChip'
 import { SkeletonRing, SkeletonChips, SkeletonCard } from '@/components/ui/Skeleton'
+import { StatusAlert } from '@/components/ui/StatusAlert'
 import Link from 'next/link'
 
 const SAMPLE_JDS = [
@@ -509,14 +510,14 @@ export default function MatchPage() {
               </button>
 
               {error && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="flex items-center gap-2.5 bg-focus-lost-dim border border-focus-lost/30 rounded-xl p-3.5 text-focus-lost text-xs font-mono"
-                >
-                  <AlertCircle size={15} className="shrink-0" />
-                  <span>{error}</span>
-                </motion.div>
+                <StatusAlert
+                  variant={error.includes('waking up') || error.includes('Render') ? 'cold-start' : 'error'}
+                  title={error.includes('waking up') ? 'Backend Initializing' : 'Match Analysis Alert'}
+                  message={error}
+                  onDismiss={() => setError(null)}
+                  onRetry={handleMatch}
+                  retryLabel="Retry Match"
+                />
               )}
             </div>
           </ViewfinderFrame>
@@ -954,14 +955,14 @@ export default function MatchPage() {
                 </button>
 
                 {multiError && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="flex items-center gap-2.5 bg-focus-lost-dim border border-focus-lost/30 rounded-xl p-3.5 text-focus-lost text-xs font-mono"
-                  >
-                    <AlertCircle size={15} className="shrink-0" />
-                    <span>{multiError}</span>
-                  </motion.div>
+                  <StatusAlert
+                    variant={multiError.includes('waking up') || multiError.includes('Render') ? 'cold-start' : 'error'}
+                    title={multiError.includes('waking up') ? 'Backend Initializing' : 'Comparison Alert'}
+                    message={multiError}
+                    onDismiss={() => setMultiError(null)}
+                    onRetry={handleMultiMatch}
+                    retryLabel="Retry Comparison"
+                  />
                 )}
               </div>
             </ViewfinderFrame>

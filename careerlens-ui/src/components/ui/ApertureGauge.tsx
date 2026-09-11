@@ -131,11 +131,19 @@ export function ApertureGauge({
   }, [center, dialRadius, showCalibration, size])
 
   return (
-    <div ref={ref} className="flex flex-col items-center gap-2 select-none group">
+    <div
+      ref={ref}
+      className="flex flex-col items-center gap-2 select-none group"
+      role="progressbar"
+      aria-valuenow={score}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-label={label || 'Optical score gauge'}
+    >
       <div className="relative" style={{ width: size, height: size }}>
         
         {/* SVG Optical Lens Assembly */}
-        <svg width={size} height={size} className="overflow-visible">
+        <svg width={size} height={size} className="overflow-visible" aria-hidden="true">
           <defs>
             {/* Blade shading gradient */}
             <linearGradient id="bladeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
