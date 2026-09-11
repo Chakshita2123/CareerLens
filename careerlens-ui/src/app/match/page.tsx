@@ -562,9 +562,27 @@ export default function MatchPage() {
                   </div>
 
                   <div className="flex-1 w-full space-y-5">
-                    {/* Summary Callout Block */}
-                    <div className="bg-surface-elevated/70 border-l-4 border-lens-cyan p-4 rounded-xl border border-surface-border text-sm leading-relaxed text-slate-200 font-sans">
-                      <p className="font-medium">{match.summary}</p>
+                    {/* 5-Second Scannable Match Headline & Summary */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <h2 className="font-display font-black text-3xl sm:text-4xl text-white tracking-tight">
+                          {match.job_match_score}% <span className="text-lens-cyan text-2xl font-bold">Match</span>
+                        </h2>
+                        <span className={`px-3 py-1 rounded-full font-mono text-xs font-bold border ${
+                          match.job_match_score >= 75
+                            ? 'bg-focus-locked-dim border-focus-locked/40 text-focus-locked'
+                            : match.job_match_score >= 50
+                            ? 'bg-focus-calibrating-dim border-focus-calibrating/40 text-focus-calibrating'
+                            : 'bg-focus-lost-dim border-focus-lost/40 text-focus-lost'
+                        }`}>
+                          {match.job_match_score >= 75 ? 'Strong Role Fit' : match.job_match_score >= 50 ? 'Moderate Alignment' : 'Significant Skill Gap'}
+                        </span>
+                      </div>
+
+                      {/* Summary Callout Block */}
+                      <div className="bg-surface-elevated/70 border-l-4 border-lens-cyan p-4 rounded-xl border border-surface-border text-sm leading-relaxed text-slate-200 font-sans">
+                        <p className="font-medium">{match.summary}</p>
+                      </div>
                     </div>
 
                     {/* Component Score Breakdown Bars */}
@@ -626,10 +644,10 @@ export default function MatchPage() {
                 </div>
               </ViewfinderFrame>
 
-              {/* Three-Column Skill Breakdown Grid */}
+              {/* Three-Column Skill Breakdown Grid: Already Have, Need to Improve, Missing */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 
-                {/* 1. Matched Skills */}
+                {/* 1. Already Have (Matched Skills) */}
                 <motion.div
                   initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -645,8 +663,8 @@ export default function MatchPage() {
                         <CheckCircle2 size={16} />
                       </div>
                       <div>
-                        <h3 className="font-display font-bold text-sm text-white">Focus Locked</h3>
-                        <p className="font-mono text-[10px] text-slate-400">Exact requirements hit</p>
+                        <h3 className="font-display font-bold text-sm text-white">Already Have</h3>
+                        <p className="font-mono text-[10px] text-slate-400">Direct requirement hits</p>
                       </div>
                     </div>
                     <span className="font-mono text-xs font-bold text-focus-locked bg-focus-locked-dim px-2.5 py-1 rounded-full border border-focus-locked/30">
@@ -660,12 +678,12 @@ export default function MatchPage() {
                         <SkillChip key={skill} skill={skill} variant="matched" />
                       ))
                     ) : (
-                      <span className="text-xs text-slate-500 italic py-2 font-mono">No exact skill hits detected</span>
+                      <span className="text-xs text-slate-500 italic py-2 font-mono">No direct keyword hits</span>
                     )}
                   </div>
                 </motion.div>
 
-                {/* 2. Related / Semantic Skills */}
+                {/* 2. Need to Improve (Related / Semantic Skills) */}
                 <motion.div
                   initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -681,8 +699,8 @@ export default function MatchPage() {
                         <Link2 size={16} />
                       </div>
                       <div>
-                        <h3 className="font-display font-bold text-sm text-white">Semantic Hits</h3>
-                        <p className="font-mono text-[10px] text-slate-400">Hover for vector link</p>
+                        <h3 className="font-display font-bold text-sm text-white">Need to Adapt</h3>
+                        <p className="font-mono text-[10px] text-slate-400">Related concepts (hover for link)</p>
                       </div>
                     </div>
                     <span className="font-mono text-xs font-bold text-lens-cyan bg-lens-cyan-dim px-2.5 py-1 rounded-full border border-lens-cyan/30">
@@ -706,7 +724,7 @@ export default function MatchPage() {
                   </div>
                 </motion.div>
 
-                {/* 3. Missing Skills */}
+                {/* 3. Missing Requirements */}
                 <motion.div
                   initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -722,8 +740,8 @@ export default function MatchPage() {
                         <XCircle size={16} />
                       </div>
                       <div>
-                        <h3 className="font-display font-bold text-sm text-white">Optical Blindspots</h3>
-                        <p className="font-mono text-[10px] text-slate-400">Required by JD, absent on resume</p>
+                        <h3 className="font-display font-bold text-sm text-white">Missing Skills</h3>
+                        <p className="font-mono text-[10px] text-slate-400">Required by role, absent on resume</p>
                       </div>
                     </div>
                     <span className="font-mono text-xs font-bold text-focus-lost bg-focus-lost-dim px-2.5 py-1 rounded-full border border-focus-lost/30">
@@ -741,6 +759,59 @@ export default function MatchPage() {
                     )}
                   </div>
                 </motion.div>
+              </div>
+
+              {/* What to Improve Before Applying Action Card */}
+              <div className="card p-6 border-surface-border bg-surface-card space-y-4 relative">
+                <span className="absolute top-1 left-1 w-2 h-2 border-t border-l border-lens-cyan" />
+                <div className="flex items-center gap-2.5 text-white font-display font-bold text-base">
+                  <Zap size={18} className="text-lens-cyan" />
+                  <h3>What to Improve Before Applying</h3>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
+                  <div className="p-3.5 rounded-xl bg-surface-elevated/70 border border-surface-border space-y-1.5">
+                    <span className="font-mono text-[10px] font-bold text-focus-lost uppercase tracking-wider">
+                      Priority 01 · Bridge Missing Skills
+                    </span>
+                    <p className="text-xs text-slate-300 leading-relaxed font-sans">
+                      {match.missing_skills.length > 0
+                        ? `Add demonstrable project bullet points or coursework mentioning ${match.missing_skills.slice(0, 3).join(', ')} to clear applicant screening filters.`
+                        : 'Your technical skill coverage fully matches this role description.'}
+                    </p>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-surface-elevated/70 border border-surface-border space-y-1.5">
+                    <span className="font-mono text-[10px] font-bold text-lens-cyan uppercase tracking-wider">
+                      Priority 02 · Align Keywords
+                    </span>
+                    <p className="text-xs text-slate-300 leading-relaxed font-sans">
+                      {match.related_skills.length > 0
+                        ? `Swap related phrasing to match the exact JD terms: ${match.related_skills.slice(0, 2).map(r => `"${r.resume_skill}" → "${r.jd_term}"`).join(', ')}.`
+                        : 'Your resume terminology directly mirrors the job posting specifications.'}
+                    </p>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-surface-elevated/70 border border-surface-border space-y-1.5">
+                    <span className="font-mono text-[10px] font-bold text-focus-locked uppercase tracking-wider">
+                      Priority 03 · Next Action Steps
+                    </span>
+                    <p className="text-xs text-slate-300 leading-relaxed font-sans">
+                      Enhance weak bullet points with measurable STAR achievements, then practice mock interview questions tailored to this role.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="pt-2 flex flex-wrap items-center gap-3">
+                  <Link href="/improve" className="btn-primary text-xs py-2 px-4 flex items-center gap-1.5">
+                    <span>Polish Bullets with AI</span>
+                    <ArrowRight size={13} />
+                  </Link>
+                  <Link href="/interview" className="btn-secondary text-xs py-2 px-4 flex items-center gap-1.5">
+                    <span>Practice Interview Questions</span>
+                    <ArrowRight size={13} />
+                  </Link>
+                </div>
               </div>
 
               {/* Action Footer Navigation Bar */}

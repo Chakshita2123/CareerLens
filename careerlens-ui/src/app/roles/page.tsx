@@ -117,9 +117,12 @@ function RoleCardContent({
             </div>
           </div>
 
-          {/* Gap Summary Callout */}
-          <div className="bg-surface-elevated/70 border-l-2 border-lens-cyan p-3 rounded-lg border border-surface-border text-xs leading-relaxed text-slate-300 font-sans">
-            <p className="font-medium">{rec.gap_summary}</p>
+          {/* Why this role fits Callout */}
+          <div className="bg-surface-elevated/70 border-l-2 border-lens-cyan p-3 rounded-lg border border-surface-border text-xs leading-relaxed text-slate-300 font-sans space-y-1">
+            <span className="font-mono text-[9px] uppercase tracking-wider text-lens-cyan font-semibold block">
+              Why this role fits your profile
+            </span>
+            <p className="font-medium text-slate-200">{rec.gap_summary}</p>
           </div>
         </div>
 
@@ -128,9 +131,9 @@ function RoleCardContent({
           {/* Matched Skills */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between text-xs font-mono">
-              <span className="flex items-center gap-1.5 text-slate-400 font-medium">
+              <span className="flex items-center gap-1.5 text-slate-300 font-medium">
                 <CheckCircle2 size={13} className="text-focus-locked" />
-                <span>Focus Locked</span>
+                <span>Relevant Skills (Matched)</span>
               </span>
               <span className="text-[11px] font-bold text-focus-locked tabular-nums">
                 {rec.matched_skills.length}
@@ -152,9 +155,9 @@ function RoleCardContent({
           {rec.missing_skills.length > 0 && (
             <div className="space-y-1.5 pt-1">
               <div className="flex items-center justify-between text-xs font-mono">
-                <span className="flex items-center gap-1.5 text-slate-400 font-medium">
+                <span className="flex items-center gap-1.5 text-slate-300 font-medium">
                   <XCircle size={13} className="text-focus-lost" />
-                  <span>Optical Blindspots</span>
+                  <span>Missing Requirements</span>
                 </span>
                 <span className="text-[11px] font-bold text-focus-lost tabular-nums">
                   {rec.missing_skills.length}
@@ -172,6 +175,19 @@ function RoleCardContent({
               </div>
             </div>
           )}
+
+          {/* Suggested Next Step Career Guidance */}
+          <div className="p-3 rounded-lg bg-surface-elevated/90 border border-surface-border text-xs font-sans space-y-1 mt-2">
+            <div className="flex items-center gap-1.5 font-mono text-[10px] font-bold text-lens-cyan uppercase tracking-wider">
+              <Zap size={11} className="text-lens-cyan" />
+              <span>Suggested Next Step</span>
+            </div>
+            <p className="text-slate-300 leading-snug text-[11px]">
+              {rec.missing_skills.length > 0
+                ? `Bridge the gap by highlighting hands-on projects with ${rec.missing_skills.slice(0, 2).join(' and ')} to elevate your role alignment above ${Math.min(95, rec.match_score + 10)}%.`
+                : 'Strong alignment across core requirements. Target senior bullet impact and practice STAR interview questions.'}
+            </p>
+          </div>
 
           {/* Related / Semantic Skills */}
           {expanded && rec.related_skills.length > 0 && (

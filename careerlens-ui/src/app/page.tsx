@@ -418,14 +418,19 @@ export default function UploadPage() {
               <ViewfinderFrame tag="ATS-ANALYSIS" cornerSize="lg" active>
                 <div className="bg-surface-card/95 backdrop-blur-xl border border-surface-border p-6 sm:p-8 flex flex-col sm:flex-row items-center gap-8 rounded-2xl shadow-2xl">
                   
-                  {/* Aperture Iris Score Gauge */}
-                  <div className="shrink-0">
+                  {/* Aperture Iris Score Gauge with Dominant Numerical Readout */}
+                  <div className="shrink-0 flex flex-col items-center">
                     <ApertureGauge
                       score={ats.overall_score}
                       size={190}
                       label="Overall ATS Score"
                       sublabel="Aperture Calibrated"
                     />
+                    <div className="mt-2 text-center">
+                      <span className="font-display font-extrabold text-2xl text-white">
+                        {ats.overall_score} <span className="text-slate-500 text-base font-normal">/ 100</span>
+                      </span>
+                    </div>
                   </div>
 
                   <div className="flex-1 space-y-4 text-center sm:text-left">
@@ -437,26 +442,22 @@ export default function UploadPage() {
                         </span>
                       </div>
 
-                      <p className="text-slate-300 text-sm leading-relaxed mt-2 font-sans">
-                        {ats.overall_score >= 70
-                          ? 'Focus locked! Your formatting, structure, and keyword density are exceptionally sharp.'
-                          : ats.overall_score >= 45
-                          ? 'Moderate optical clarity. Solid foundation with clear tuning needed in metrics or headers.'
-                          : 'Significant optical blur detected. Structural formatting gaps are hindering ATS parsers.'}
+                      <h3 className="text-lg sm:text-xl font-display font-bold text-white mt-1">
+                        {ats.overall_score >= 80
+                          ? 'High ATS Compatibility — Ready for Recruiter Review'
+                          : ats.overall_score >= 60
+                          ? 'Moderate ATS Compatibility — Solid Foundation with Tuning Needed'
+                          : 'ATS Optimization Required — Structural Gaps Affecting Readability'}
+                      </h3>
+
+                      <p className="text-slate-300 text-sm leading-relaxed mt-1.5 font-sans">
+                        {ats.overall_score >= 80
+                          ? 'Your resume demonstrates strong structural completeness, readable formatting, and solid keyword density. It will successfully parse through standard applicant tracking systems.'
+                          : ats.overall_score >= 60
+                          ? 'Your resume contains good core signals, but points are being lost on action verbs, quantifiable metrics, or section completeness. Implementing the recommendations below will significantly increase recruiter visibility.'
+                          : 'Several critical sections, formatting structures, or bullet-point metrics are missing or difficult for parsers to extract. Follow the priority improvements below to calibrate your profile.'}
                       </p>
                     </div>
-
-                    {ats.top_issues.length > 0 && (
-                      <div className="space-y-2 text-left bg-surface-elevated/60 p-3.5 rounded-xl border border-surface-border font-mono">
-                        <p className="label text-[10px] text-slate-400">OPTICAL BLINDSPOTS DETECTED</p>
-                        {ats.top_issues.slice(0, 3).map((issue, i) => (
-                          <div key={i} className="flex gap-2 text-xs text-slate-300">
-                            <span className="text-focus-lost font-bold shrink-0">▸</span>
-                            <span>{issue}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
 
                     <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 pt-2">
                       <button
@@ -497,14 +498,96 @@ export default function UploadPage() {
                 </div>
               </ViewfinderFrame>
 
+              {/* Tri-Fold Deep Analysis: Strengths, Issues & Actionable Advice */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* 1. Strengths */}
+                <div className="card p-5 space-y-3 bg-surface-card border-focus-locked/30 relative">
+                  <span className="absolute top-1 left-1 w-2 h-2 border-t border-l border-focus-locked" />
+                  <div className="flex items-center gap-2 text-focus-locked font-display font-bold text-sm">
+                    <CheckCircle2 size={16} />
+                    <h4>Profile Strengths</h4>
+                  </div>
+                  <p className="text-xs text-slate-400">Where your resume earned top marks:</p>
+                  <div className="space-y-2 pt-1">
+                    {ats.breakdown.filter(b => (b.score / b.max_score) >= 0.75).length > 0 ? (
+                      ats.breakdown.filter(b => (b.score / b.max_score) >= 0.75).map(item => (
+                        <div key={item.category} className="p-2.5 rounded-lg bg-focus-locked-dim/50 border border-focus-locked/20 text-xs">
+                          <div className="flex justify-between font-mono font-semibold text-slate-200">
+                            <span>{item.category}</span>
+                            <span className="text-focus-locked">{item.score}/{item.max_score}</span>
+                          </div>
+                          <p className="text-[11px] text-slate-300 mt-1 leading-snug">{item.feedback}</p>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-xs text-slate-400 italic">Review scoring categories below to start unlocking strengths.</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* 2. Issues Hurting Score */}
+                <div className="card p-5 space-y-3 bg-surface-card border-focus-lost/30 relative">
+                  <span className="absolute top-1 left-1 w-2 h-2 border-t border-l border-focus-lost" />
+                  <div className="flex items-center gap-2 text-focus-lost font-display font-bold text-sm">
+                    <AlertCircle size={16} />
+                    <h4>Score Blockers</h4>
+                  </div>
+                  <p className="text-xs text-slate-400">Areas where points were deducted:</p>
+                  <div className="space-y-2 pt-1">
+                    {ats.breakdown.filter(b => (b.score / b.max_score) < 0.75).length > 0 ? (
+                      ats.breakdown.filter(b => (b.score / b.max_score) < 0.75).map(item => (
+                        <div key={item.category} className="p-2.5 rounded-lg bg-focus-lost-dim/40 border border-focus-lost/20 text-xs">
+                          <div className="flex justify-between font-mono font-semibold text-slate-200">
+                            <span>{item.category}</span>
+                            <span className="text-focus-lost">{item.score}/{item.max_score}</span>
+                          </div>
+                          <p className="text-[11px] text-slate-300 mt-1 leading-snug">{item.feedback}</p>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-xs text-focus-locked font-mono">✓ Zero significant blockers found across any category!</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* 3. Actionable Priority Improvements */}
+                <div className="card p-5 space-y-3 bg-surface-card border-lens-cyan/30 relative">
+                  <span className="absolute top-1 left-1 w-2 h-2 border-t border-l border-lens-cyan" />
+                  <div className="flex items-center gap-2 text-lens-cyan font-display font-bold text-sm">
+                    <Zap size={16} />
+                    <h4>Actionable Steps</h4>
+                  </div>
+                  <p className="text-xs text-slate-400">Concrete steps to raise your score:</p>
+                  <div className="space-y-2 pt-1 font-mono text-xs">
+                    {ats.top_issues.length > 0 ? (
+                      ats.top_issues.map((issue, idx) => (
+                        <div key={idx} className="p-2.5 rounded-lg bg-surface-elevated/70 border border-surface-border flex items-start gap-2">
+                          <span className="text-lens-cyan font-bold shrink-0">0{idx + 1}.</span>
+                          <span className="text-slate-200 text-[11px] leading-relaxed font-sans">{issue}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-3 rounded-lg bg-surface-elevated text-slate-300 text-xs font-sans">
+                        Your resume fulfills all standard ATS criteria. Proceed to Job Match for target role tuning.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               {/* Category Breakdown Grid */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h2 className="font-display font-bold text-lg flex items-center gap-2 text-white">
-                    <CheckCircle2 size={18} className="text-lens-cyan" />
-                    Diagnostic Breakdown by Layer
-                  </h2>
-                  <span className="text-xs font-mono text-slate-500">Click any card to expand feedback</span>
+                  <div>
+                    <h2 className="font-display font-bold text-lg flex items-center gap-2 text-white">
+                      <CheckCircle2 size={18} className="text-lens-cyan" />
+                      All 7 ATS Diagnostic Layers
+                    </h2>
+                    <p className="text-xs text-slate-400 font-sans mt-0.5">
+                      Transparent rule-based scoring based directly on recruiter applicant tracking criteria.
+                    </p>
+                  </div>
+                  <span className="text-xs font-mono text-slate-500 hidden sm:inline">Click any card to expand feedback</span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
