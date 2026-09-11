@@ -47,6 +47,11 @@ export function Navbar() {
   const path = usePathname()
   const [versionId] = useSelectedVersion()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // Close mobile drawer on route navigation
   useEffect(() => {
@@ -103,7 +108,7 @@ export function Navbar() {
         <div className="flex items-center gap-2.5">
           {/* Active Session Indicator (Desktop) */}
           <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-elevated/70 border border-surface-border font-mono text-[10px]">
-            {versionId ? (
+            {mounted && versionId ? (
               <>
                 <FileCheck size={12} className="text-focus-locked" />
                 <span className="text-slate-300 font-medium">Resume Active</span>
@@ -135,7 +140,7 @@ export function Navbar() {
           {/* Active Resume status in mobile drawer */}
           <div className="flex items-center justify-between p-2.5 rounded-xl bg-surface-elevated/60 border border-surface-border text-xs font-mono">
             <span className="text-slate-400">Profile Status:</span>
-            {versionId ? (
+            {mounted && versionId ? (
               <span className="flex items-center gap-1.5 text-focus-locked font-semibold">
                 <FileCheck size={13} /> Active Resume
               </span>

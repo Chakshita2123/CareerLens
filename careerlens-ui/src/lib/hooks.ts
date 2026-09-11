@@ -10,16 +10,16 @@ import { useState, useEffect, useRef, useCallback } from 'react'
  * the value was '' on render-1 and only populated after a useEffect fired.
  */
 export function useLocalStorage<T>(key: string, initialValue: T) {
-  const [stored, setStored] = useState<T>(() => {
-    // On the server (SSR/RSC) localStorage does not exist — return the default.
-    if (typeof window === 'undefined') return initialValue
+  const [stored, setStored] = useState<T>(initialValue)
+
+  useEffect(() => {
     try {
       const item = window.localStorage.getItem(key)
-      return item !== null ? (JSON.parse(item) as T) : initialValue
-    } catch {
-      return initialValue
-    }
-  })
+      if (item !== null) {
+        setStored(JSON.parse(item) as T)
+      }
+    } catch {}
+  }, [key])
 
   const set = useCallback(
     (value: T) => {
@@ -36,27 +36,25 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
 
 /**
  * Generate and persist a stable random user ID in localStorage.
- * Used as a stand-in for real auth (Phase 6 scope constraint).
- *
- * The ID is generated synchronously in the lazy useState initializer so it
- * is available on render-1 — no useEffect delay, no empty-string window.
+ * Initialized safely via useEffect to prevent SSR hydration mismatches.
  */
 export function useUserId(): string {
-  const [userId] = useState<string>(() => {
-    if (typeof window === 'undefined') return ''
+  const [userId, setUserId] = useState<string>('')
+
+  useEffect(() => {
     try {
       const existing = window.localStorage.getItem('cl_user_id')
-      if (existing) return existing
-      // Generate a new persistent ID and write it immediately.
+      if (existing) {
+        setUserId(existing)
+        return
+      }
       const id = `user_${Math.random().toString(36).slice(2, 10)}`
       window.localStorage.setItem('cl_user_id', id)
-      return id
+      setUserId(id)
     } catch {
-      // localStorage blocked (private-browsing restrictions, etc.)
-      // Fall back to a session-scoped ID so the page still works.
-      return `user_${Math.random().toString(36).slice(2, 10)}`
+      setUserId(`user_${Math.random().toString(36).slice(2, 10)}`)
     }
-  })
+  }, [])
 
   return userId
 }
