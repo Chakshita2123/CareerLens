@@ -1,121 +1,182 @@
 # CareerLens — AI-Powered Resume Intelligence & Job Matching Platform
 
-CareerLens is a full-stack AI/ML platform that analyzes a candidate's resume, benchmarks it against job descriptions using semantic (not just keyword) matching, and provides actionable, AI-guided feedback to improve job-search outcomes. It combines deterministic scoring, sentence-embedding-based NLP, and grounded LLM assistance into one cohesive career-intelligence tool.
+[![Live Frontend](https://img.shields.io/badge/Production-Live%20Frontend-00f0ff?style=for-the-badge&logo=vercel)](https://careerlens-1-y5zn.onrender.com/)
+[![API Documentation](https://img.shields.io/badge/FastAPI-Swagger%20Docs-00e676?style=for-the-badge&logo=fastapi)](https://careerlens-d3vi.onrender.com/docs)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
 
-> Built as both a college project and a portfolio piece, with a distinctive "Optical Lens & Viewfinder" visual identity — the UI treats scoring and analysis as a camera bringing your resume into focus.
-
----
-
-## ✨ Features
-
-| Feature | Description |
-|---|---|
-| **Resume Parser** | Extracts structured data (skills, education, experience, projects, certifications, contact info) from PDF/DOCX resumes |
-| **ATS Compatibility Score** | Deterministic, rule-based scoring across section completeness, contact info, bullet quality, resume length, skill density, and formatting — with a transparent per-category breakdown |
-| **Semantic Job Matching** | Uses sentence-transformer embeddings to catch related skills even when exact keywords differ (e.g. "React" ↔ "component-based UI frameworks") |
-| **Job Match Score** | Weighted combination of exact/semantic skill overlap, holistic semantic similarity, and experience-level alignment against a specific job description |
-| **Multi-JD Comparison** | Compare one resume against multiple job descriptions side-by-side to find the strongest-fit role |
-| **Job Role Recommender** | Benchmarks the resume against a curated bank of tech roles and surfaces skill gaps per role |
-| **AI Bullet-Point Improvements** | LLM-powered rewrite suggestions for weak resume bullets — strictly grounded in the original claim, with placeholder metrics rather than invented numbers |
-| **Resume Version Comparison** | Tracks ATS and Job Match scores across multiple saved resume versions, with score deltas over time |
-| **PDF Export** | Download a clean, professional analysis report (ATS score, job match, role recommendations) |
-| **Interactive Mock Interview** | AI-generated interview questions (behavioral + technical) grounded in your resume and target JD, with structured, honest feedback per answer and a session debrief |
+> **An AI career intelligence platform combining deterministic ATS validation, transformer-based semantic job matching, and grounded LLM interview coaching.**
+> Built around an **Optical Viewfinder** design aesthetic where your career readiness is brought into razor-sharp focus (from *f/16 Out of Focus* to *f/1.4 Focus Locked*).
 
 ---
 
-## 🛠️ Tech Stack
+## 🌐 Live Production Deployments
 
-**Frontend:** Next.js (App Router), TypeScript, Tailwind CSS
-**Backend:** FastAPI (Python)
-**Database:** MongoDB (via Motor, async driver)
-**NLP/ML:**
-- `sentence-transformers` (`all-MiniLM-L6-v2`) — semantic similarity & skill matching
-- `spaCy` — named entity recognition / resume parsing
-- `pdfplumber` / `python-docx` — resume text extraction
-**LLM Layer:** Gemini (primary) → Groq (fallback) → deterministic mock (last resort) — used only for bullet-point suggestions and mock interview feedback, kept fully isolated from deterministic scoring
-**PDF Generation:** WeasyPrint (HTML/CSS-based report rendering)
+- **Web Application:** [https://careerlens-1-y5zn.onrender.com/](https://careerlens-1-y5zn.onrender.com/)
+- **REST API Backend:** [https://careerlens-d3vi.onrender.com/](https://careerlens-d3vi.onrender.com/)
+- **Interactive Swagger Docs:** [https://careerlens-d3vi.onrender.com/docs](https://careerlens-d3vi.onrender.com/docs)
+
+*(Note: Deployed on Render's free tier. If cold, the initial backend request spins up within ~30–50 seconds.)*
 
 ---
 
-## 🏗️ Architecture
+## ⚡ The Problem CareerLens Solves
 
-The backend is organized into independently testable modules that mirror the product's build phases:
+Most job applicants send resumes into black-box Applicant Tracking Systems (ATS) without knowing if their document will parse properly, how closely their experience matches job descriptions, or how to speak about their projects during behavioral interviews.
+
+Existing tools are either:
+1. **Shallow keyword counters** that penalize natural synonyms (e.g. flagging someone who wrote "Postgres" instead of "Relational Databases").
+2. **Ungrounded AI wrappers** that hallucinate fake metrics, invent false company names, or deliver vague compliments without constructive critique.
+
+**CareerLens solves this with a three-layer hybrid architecture:**
+- **Deterministic Rules Engine** for 100% predictable, transparent ATS formatting checks.
+- **Local Sentence-Transformers** for semantic skill understanding without keyword fragility.
+- **Grounded LLM Layer** with strict fallback chains (Gemini 1.5 → Groq LLaMA 3 → Offline Mock) for STAR bullet enhancement and multi-turn mock interviews.
+
+---
+
+## 🎯 Key Capabilities & Feature Matrix
+
+| Feature | Technology | What it Delivers |
+|---|---|---|
+| **Deterministic ATS Audit** | Rule-Based Scoring Engine | Validates section completeness, contact details, bullet formatting, file length, and keyword density. Delivers an objective 0–100 score with explicit blockers and fixes. |
+| **Semantic Job Matching** | `sentence-transformers` (`all-MiniLM-L6-v2`) | Understands skill context beyond exact keyword matches (e.g. maps "Kubernetes orchestration" to "Cloud infrastructure"). |
+| **Multi-JD Role Comparison** | Vector Cosine Overlap Matrix | Paste 2–4 target job descriptions side-by-side to immediately determine which role has the strongest profile alignment. |
+| **25+ Curated Role Benchmarks** | Domain Vector Profiles | Automatically maps your background against 25+ software, data, DevOps, and design roles to discover adjacent career paths and missing competencies. |
+| **Grounded STAR Bullet Rewriter** | Gemini 1.5 / Groq LLaMA 3 | Rewrites passive bullet points into quantified **Action + Context + Impact** statements. Never invents claims; uses `[X%]` placeholders for metrics. |
+| **Interactive Mock Interview** | LLM Multi-Turn Simulator | Roleplays behavioral and technical interviews generated specifically from your resume bullets and target JD. Grades responses against the STAR rubric. |
+| **Version Delta Comparator** | Time-series History Engine | Compare Version A vs Version B side-by-side to track whether revisions sharpened or regressed your ATS score before submitting. |
+| **Executive PDF Reports** | HTML5 / WeasyPrint | Generates a downloadable, beautifully typeset PDF summary with ATS audit breakdown and skill gap insights. |
+
+---
+
+## 🏛️ System Architecture
+
+```mermaid
+flowchart TD
+    subgraph Client ["Frontend (Next.js 14 / TypeScript)"]
+        UI["Optical Viewfinder UI\n(ApertureGauge, StatusAlert, DiffViewer)"]
+        State["Client Session State\n(localStorage userId + versionId)"]
+    end
+
+    subgraph Backend ["Backend API (FastAPI / Python 3.10)"]
+        Router["FastAPI Route Handlers (/api/*)"]
+        
+        subgraph Parsing ["1. Document Parsing"]
+            Parser["pdfplumber & python-docx"]
+            NER["spaCy NER (en_core_web_sm)"]
+        end
+        
+        subgraph Scoring ["2. Scoring Engines"]
+            ATS["Deterministic ATS Scorer\n(Formatting, Length, Density)"]
+            ST["SentenceTransformer\n(all-MiniLM-L6-v2 384-d vectors)"]
+            Matcher["Job Match Evaluator\n(50% Skills + 30% Semantic + 20% Exp)"]
+        end
+        
+        subgraph LLM ["3. Grounded LLM Layer"]
+            FallbackChain["Gemini 1.5 Flash\n↳ Groq LLaMA 3.3\n↳ Offline Deterministic Fallback"]
+        end
+    end
+
+    subgraph Storage ["Persistence"]
+        Mongo[("MongoDB Atlas\n(Motor Async Client)")]
+    end
+
+    UI --> Router
+    Router --> Parser --> NER
+    NER --> ATS
+    NER --> ST --> Matcher
+    Router --> FallbackChain
+    Router --> Mongo
+```
+
+---
+
+## 🔬 Honest Limits & Capability Breakdown
+
+CareerLens is transparent about what technology powers each insight:
 
 ```
-parser.py              → Resume text extraction & structuring
-ats_scorer.py           → Rule-based ATS Compatibility Score
-semantic_matcher.py     → Sentence-embedding skill matching engine
-job_match_scorer.py     → Combined Job Match Score
-role_recommender.py     → Curated role bank + role fit ranking
-bullet_improver.py      → LLM-powered bullet rewrite suggestions
-mock_interview.py       → AI interview question generation + answer feedback
-pdf_report.py           → PDF report generation
-main.py                 → FastAPI routes tying it all together
-database.py             → MongoDB collections & connection handling
-models.py               → Pydantic request/response schemas
+┌─────────────────────────────────────────────────────────────────────────┐
+│ DETERMINISTIC (No AI, 100% Reproducible)                                │
+│ • ATS score calculations (sections, word count, email/phone regex)      │
+│ • Bullet count and metric presence detection                            │
+│ • Version A vs. Version B score delta arithmetic                        │
+├─────────────────────────────────────────────────────────────────────────┤
+│ LOCAL NLP (Fast, No External API Calls, Zero Hallucinations)            │
+│ • Skill keyword extraction via spaCy tokenization                       │
+│ • Sentence-Transformers (all-MiniLM-L6-v2) 384-dimensional embeddings   │
+│ • Cosine similarity calculation between resume and job description      │
+├─────────────────────────────────────────────────────────────────────────┤
+│ GENERATIVE LLM (Creativity Guardrailed by Prompts)                      │
+│ • Bullet point improvement suggestions (STAR framework)                 │
+│ • Interview question formulation from resume projects                   │
+│ • Interview verbal critique & reframe suggestions                       │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
-
-The frontend (`careerlens-ui/`) is a Next.js app with pages for Upload, Job Match, Roles, Improve, History, and Interview, all built around a shared "Optical Lens" design system (custom `ApertureGauge`, `ViewfinderFrame`, `ScanSweep`, and `SkillChip` components).
 
 ---
 
-## 🚀 Getting Started
+## 🛠️ Technology Stack & Engineering Decisions
 
-### Prerequisites
-- Python 3.10+
-- Node.js 18+
-- MongoDB (local instance or MongoDB Atlas free tier)
-- Gemini and/or Groq API keys (optional — the app falls back to mock responses without them)
+### Frontend
+- **Next.js 14 (App Router):** Server-side layout rendering with high-performance client transitions.
+- **TypeScript:** Strict type safety across all API request/response payloads.
+- **Tailwind CSS & Framer Motion:** Bespoke "Optical Lens" dark-mode aesthetic with custom SVG gauges, aperture reticles, and micro-animations.
+- **Recharts:** Responsive time-series charts for version-over-version score progression.
 
-### Backend Setup
+### Backend
+- **FastAPI (Python 3.10):** Asynchronous ASGI framework for sub-millisecond route dispatching and auto-generated OpenAPI 3.0 specs.
+- **Motor (MongoDB):** Non-blocking async MongoDB driver for high-concurrency document operations.
+- **Sentence-Transformers (`all-MiniLM-L6-v2`):** Lightweight, highly performant embedding model producing 384-dimensional vectors with minimal memory footprint on Render.
+- **spaCy (`en_core_web_sm`):** Rule and token-based entity extraction for technical skills, degrees, and dates.
+- **Google Generative AI & Groq:** Primary LLM inference via Gemini Flash with instantaneous Groq failover to ensure zero downtime.
 
+---
+
+## 💻 Local Development Setup
+
+### 1. Clone the Repository
 ```bash
-# Install Python dependencies
-pip install -r requirements.txt --break-system-packages
+git clone https://github.com/Chakshita2123/CareerLens.git
+cd CareerLens
+```
 
-# Download the spaCy model
+### 2. Backend Setup (FastAPI)
+```bash
+# Create and activate virtual environment
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Download spaCy linguistic model
 python -m spacy download en_core_web_sm
 
-# Set up environment variables
+# Configure environment variables
 cp .env.example .env
-# Fill in: MONGODB_URI, GEMINI_API_KEY, GROQ_API_KEY
+# Edit .env with your MONGODB_URI, GEMINI_API_KEY, and GROQ_API_KEY
 
-# Run the FastAPI server
-uvicorn main:app --reload
+# Start backend dev server
+uvicorn main:app --reload --port 8000
 ```
+Backend will be live at `http://localhost:8000` (Swagger docs at `http://localhost:8000/docs`).
 
-The API will be available at `http://localhost:8000`, with interactive docs at `http://localhost:8000/docs`.
-
-### Frontend Setup
-
+### 3. Frontend Setup (Next.js)
 ```bash
 cd careerlens-ui
+
+# Install dependencies
 npm install
+
+# Start Next.js development server
 npm run dev
 ```
-
-The app will be available at `http://localhost:3000`.
-
----
-
-## 📸 Screenshots
-
-*(Add screenshots of the Landing page, ATS score result, Job Match analysis, and Mock Interview flow here)*
+Frontend will be live at `http://localhost:3000`.
 
 ---
 
-## 🗺️ Roadmap / Possible Future Additions
+## 📄 License & Attribution
 
-- Real authentication (currently uses a simple persisted user identifier, auth-ready schema)
-- Cover letter generator
-- Shareable public results link
-- LinkedIn summary optimizer
-
----
-
-## ⚠️ Disclaimer
-
-CareerLens provides AI-generated guidance for resume and interview preparation. Scores and suggestions are meant to inform, not guarantee, outcomes with any specific ATS system or employer.
-
----
-
+Distributed under the MIT License. Developed with care by [Chakshita](https://github.com/Chakshita2123).
+Questions or feedback? Open an issue or submit a pull request!
