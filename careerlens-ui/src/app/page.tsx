@@ -1,10 +1,10 @@
 'use client'
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Upload, FileText, CheckCircle2, ChevronDown, ChevronUp, AlertCircle,
   Sparkles, Shield, Target, Briefcase, Zap, ArrowRight, Layers, FileCheck,
-  Scan, Crosshair, Eye, Compass, Sliders, Download, Loader2
+  Scan, Crosshair, Eye, Compass, Sliders, Download, Loader2, Clock
 } from 'lucide-react'
 import { useUserId, useSelectedVersion } from '@/lib/hooks'
 import { uploadResume, downloadPdfReport } from '@/lib/api'
@@ -14,6 +14,7 @@ import { ViewfinderFrame } from '@/components/ui/ViewfinderFrame'
 import { ScanSweep } from '@/components/ui/ScanSweep'
 import { SkeletonRing, SkeletonCard } from '@/components/ui/Skeleton'
 import { StatusAlert } from '@/components/ui/StatusAlert'
+import { HeroScannerGraphic } from '@/components/ui/HeroScannerGraphic'
 import Link from 'next/link'
 
 function scoreColor(ratio: number) {
@@ -129,6 +130,34 @@ export default function UploadPage() {
   const [label, setLabel] = useState('')
   const [downloadingPdf, setDownloadingPdf] = useState(false)
   const [pdfError, setPdfError] = useState<string | null>(null)
+  const [loadingPhase, setLoadingPhase] = useState(0)
+  const [loadingElapsed, setLoadingElapsed] = useState(0)
+
+  const LOADING_MESSAGES = [
+    'Reading resume structure & document layout…',
+    'Extracting skills, career experience & education…',
+    'Auditing 7 ATS compatibility scoring categories…',
+    'Calibrating semantic profile signals…',
+  ]
+
+  useEffect(() => {
+    if (!loading) {
+      setLoadingPhase(0)
+      setLoadingElapsed(0)
+      return
+    }
+    const timer = setInterval(() => {
+      setLoadingElapsed(t => t + 1)
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [loading])
+
+  useEffect(() => {
+    if (loadingElapsed >= 8) setLoadingPhase(3)
+    else if (loadingElapsed >= 5) setLoadingPhase(2)
+    else if (loadingElapsed >= 2) setLoadingPhase(1)
+    else setLoadingPhase(0)
+  }, [loadingElapsed])
 
   const handleDownloadPdf = async () => {
     if (!result?._id) return
@@ -191,35 +220,63 @@ export default function UploadPage() {
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="text-center space-y-4 max-w-3xl mx-auto"
+          className="text-center space-y-6 max-w-4xl mx-auto"
         >
-          {/* HUD Badge */}
+          {/* HUD Status Pill */}
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-surface-card border border-surface-border text-xs font-mono font-semibold text-lens-cyan tracking-wider shadow-sm hover:border-lens-cyan/40 transition-colors">
             <Scan size={13} className="text-lens-cyan animate-pulse" />
-            <span>OPTICAL ATS INTELLIGENCE & MATCHING</span>
+            <span>AI CAREER INTELLIGENCE & ATS OPTIMIZATION</span>
           </div>
 
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-display font-extrabold tracking-tight text-gradient leading-[1.12]">
-            See Your Resume Through the Recruiter&apos;s Lens
+            See exactly where your career stands.
           </h1>
 
-          <p className="text-slate-400 text-base sm:text-lg leading-relaxed max-w-2xl mx-auto font-sans">
-            Instant camera-aperture ATS scoring, semantic vector job matching,
-            and precision AI enhancements engineered to get your profile noticed.
+          <p className="text-slate-300 text-base sm:text-lg leading-relaxed max-w-2xl mx-auto font-sans">
+            Precision ATS compatibility audits, semantic vector job matching,
+            skill-gap detection, and personalized AI interview preparation — bringing your true market value into sharp focus.
           </p>
 
-          <div className="flex items-center justify-center gap-6 pt-2 text-xs font-mono text-slate-400">
+          {/* Primary & Secondary Call to Actions */}
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+            <button
+              type="button"
+              onClick={() => document.getElementById('upload-zone')?.scrollIntoView({ behavior: 'smooth' })}
+              className="btn-primary flex items-center gap-2 text-sm px-6 py-3 cursor-pointer"
+            >
+              <span>Analyze My Resume</span>
+              <ArrowRight size={16} />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}
+              className="btn-secondary flex items-center gap-2 text-sm px-6 py-3 cursor-pointer"
+            >
+              <span>Explore CareerLens</span>
+              <ChevronDown size={16} />
+            </button>
+          </div>
+
+          {/* Trust & Capability Badges */}
+          <div className="flex items-center justify-center gap-6 pt-1 text-xs font-mono text-slate-400">
             <span className="flex items-center gap-1.5">
-              <Shield size={13} className="text-focus-locked" /> [LOCAL-SANDBOX]
+              <Shield size={13} className="text-focus-locked" /> Local Private Sandbox
             </span>
             <span className="flex items-center gap-1.5">
-              <FileCheck size={13} className="text-lens-cyan" /> [PDF/DOCX PARSER]
+              <FileCheck size={13} className="text-lens-cyan" /> PDF & DOCX Parser
             </span>
+          </div>
+
+          {/* Optical Scanner Live Graphic */}
+          <div className="pt-4">
+            <HeroScannerGraphic />
           </div>
         </motion.div>
 
         {/* Upload Container Card with Viewfinder Framing */}
         <motion.div
+          id="upload-zone"
           initial={{ opacity: 0, y: 22 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
@@ -314,15 +371,31 @@ export default function UploadPage() {
           )}
         </AnimatePresence>
 
-        {/* Loading Skeletons */}
+        {/* Loading State with Honest Progress */}
         {loading && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-3xl mx-auto space-y-6">
-            <div className="text-center space-y-1.5">
-              <p className="text-sm font-display font-semibold text-lens-cyan">Auditing Resume Optical Structure…</p>
-              <p className="text-xs font-mono text-slate-500 animate-pulse">
-                Parsing layout, calculating f-stop compatibility, and indexing keyword weights
+            <div className="text-center space-y-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-lens-cyan-dim border border-lens-cyan/30 text-xs font-mono text-lens-cyan">
+                <Loader2 size={13} className="animate-spin" />
+                <span>STEP 0{loadingPhase + 1} OF 04</span>
+              </div>
+              <p className="text-base font-display font-bold text-white">
+                {LOADING_MESSAGES[loadingPhase]}
+              </p>
+              <p className="text-xs font-mono text-slate-400">
+                Evaluating against 7 transparent scoring criteria · {loadingElapsed}s elapsed
               </p>
             </div>
+
+            {loadingElapsed >= 10 && (
+              <div className="p-3.5 rounded-xl bg-lens-cyan-dim border border-lens-cyan/40 text-xs text-slate-200 font-mono flex items-center gap-3">
+                <Clock size={16} className="text-lens-cyan shrink-0 animate-pulse" />
+                <span>
+                  <strong>Render Notice:</strong> If the backend was idle, cold start initialization can take up to 30–45s. Your analysis is actively processing.
+                </span>
+              </div>
+            )}
+
             <div className="flex justify-center py-4">
               <SkeletonRing />
             </div>
@@ -447,6 +520,7 @@ export default function UploadPage() {
         {/* Feature Highlights Grid — Visible when no upload result is active */}
         {!ats && !loading && (
           <motion.div
+            id="features"
             initial={{ opacity: 0, y: 28 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
