@@ -43,9 +43,14 @@ export function SkillChip({ skill, variant, matchInfo }: Props) {
   return (
     <div className="relative inline-flex group">
       <span
+        tabIndex={matchInfo ? 0 : undefined}
+        role={matchInfo ? 'button' : undefined}
+        aria-haspopup={matchInfo ? 'true' : undefined}
+        aria-expanded={matchInfo ? showTip : undefined}
         className={clsx(
           'relative inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-mono font-medium',
           'border cursor-default transition-all duration-200 select-none backdrop-blur-sm',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current/60 focus-visible:ring-offset-1 focus-visible:ring-offset-[#06070a]',
           st.bg,
           st.text,
           st.border,
@@ -53,6 +58,8 @@ export function SkillChip({ skill, variant, matchInfo }: Props) {
         )}
         onMouseEnter={() => matchInfo && setShowTip(true)}
         onMouseLeave={() => setShowTip(false)}
+        onFocus={() => matchInfo && setShowTip(true)}
+        onBlur={() => setShowTip(false)}
       >
         {/* Autofocus Corner Brackets on Hover */}
         <span className="absolute -top-0.5 -left-0.5 w-1.5 h-1.5 border-t border-l border-current opacity-0 group-hover:opacity-100 transition-opacity duration-150" />

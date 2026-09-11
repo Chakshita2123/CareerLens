@@ -81,9 +81,9 @@ export function ViewfinderFrame({
 
       {/* Optional Optical HUD Tag in corner */}
       {tag && (
-        <div className="absolute top-2 right-3 pointer-events-none flex items-center gap-1">
+        <div className="absolute top-2 right-3 pointer-events-none flex items-center gap-1 z-10">
           <span className="w-1.5 h-1.5 rounded-full bg-lens-cyan animate-pulse" />
-          <span className="font-mono text-[9px] uppercase tracking-widest text-lens-cyan font-bold bg-surface-base/80 px-1.5 py-0.5 rounded border border-lens-cyan/30">
+          <span className="font-mono text-[9px] uppercase tracking-widest text-lens-cyan font-bold bg-surface-base/90 px-1.5 py-0.5 rounded border border-lens-cyan/30 shadow-sm backdrop-blur-sm">
             {tag}
           </span>
         </div>

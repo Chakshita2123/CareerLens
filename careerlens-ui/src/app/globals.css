@@ -61,7 +61,7 @@
 @layer components {
   /* Optical Base Cards */
   .card {
-    @apply bg-surface-card border border-surface-border rounded-2xl;
+    @apply bg-surface-card border border-surface-border rounded-2xl transition-all duration-200;
   }
 
   .card-elevated {
@@ -86,22 +86,47 @@
     @apply absolute bottom-0 right-0 w-3.5 h-3.5 border-b-2 border-r-2 border-lens-cyan/50 pointer-events-none transition-colors duration-300;
   }
 
-  /* Optical Buttons */
+  /* Optical Buttons - Refined SaaS Energy */
   .btn-primary {
     @apply bg-gradient-to-r from-lens-cyan via-lens-sapphire to-lens-blue text-[#06070a] font-bold px-5 py-2.5 rounded-xl
-           transition-all duration-200 shadow-[0_0_20px_rgba(0,240,255,0.35)] hover:shadow-[0_0_30px_rgba(0,240,255,0.6)]
-           hover:scale-[1.01] active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:hover:scale-100;
+           transition-all duration-200 shadow-[0_2px_14px_rgba(0,240,255,0.3)] hover:shadow-[0_4px_22px_rgba(0,240,255,0.45)]
+           hover:scale-[1.01] active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:hover:scale-100
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lens-cyan/80 focus-visible:ring-offset-2 focus-visible:ring-offset-[#06070a];
   }
 
   .btn-secondary {
-    @apply border border-surface-border bg-surface-elevated/80 hover:border-lens-cyan/50 text-slate-300
+    @apply border border-surface-border bg-surface-elevated/80 hover:border-lens-cyan/50 text-slate-200
            hover:text-white font-medium px-5 py-2.5 rounded-xl transition-all duration-200
-           hover:bg-lens-cyan-dim hover:shadow-[0_0_16px_rgba(0,240,255,0.15)] disabled:opacity-40 disabled:cursor-not-allowed;
+           hover:bg-lens-cyan-dim hover:shadow-[0_0_16px_rgba(0,240,255,0.12)] disabled:opacity-40 disabled:cursor-not-allowed
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lens-cyan/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#06070a];
   }
 
   .btn-optical-ghost {
     @apply border border-surface-border/80 hover:border-lens-cyan/40 text-slate-400 hover:text-lens-cyan
-           text-xs font-mono px-3 py-1.5 rounded-lg transition-all bg-surface-elevated/40;
+           text-xs font-mono px-3 py-1.5 rounded-lg transition-all bg-surface-elevated/40
+           focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-lens-cyan;
+  }
+
+  /* Accessible Focus Ring Utility */
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lens-cyan/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#06070a];
+  }
+
+  /* Standardized Status Badges */
+  .badge-locked {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-mono text-xs font-semibold bg-focus-locked-dim border border-focus-locked/40 text-focus-locked;
+  }
+
+  .badge-calibrating {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-mono text-xs font-semibold bg-focus-calibrating-dim border border-focus-calibrating/40 text-focus-calibrating;
+  }
+
+  .badge-lost {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-mono text-xs font-semibold bg-focus-lost-dim border border-focus-lost/40 text-focus-lost;
+  }
+
+  .badge-cyan {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-mono text-xs font-semibold bg-lens-cyan-dim border border-lens-cyan/40 text-lens-cyan;
   }
 
   .label {
