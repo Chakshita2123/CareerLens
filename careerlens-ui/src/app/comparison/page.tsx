@@ -385,6 +385,194 @@ function OpticalEmptyState() {
   )
 }
 
+// ─── Version A vs Version B Differential Comparator ──────────────────────────
+
+function VersionComparator({ versions }: { versions: ComparisonEntry[] }) {
+  const [versionAId, setVersionAId] = useState<string>(
+    versions.length >= 2 ? versions[versions.length - 2]._id : versions[0]._id
+  )
+  const [versionBId, setVersionBId] = useState<string>(
+    versions[versions.length - 1]._id
+  )
+
+  const vA = versions.find((v) => v._id === versionAId) || versions[0]
+  const vB = versions.find((v) => v._id === versionBId) || versions[versions.length - 1]
+
+  const atsDelta = vB.overall_ats_score - vA.overall_ats_score
+  const matchDelta =
+    vA.latest_job_match_score !== null && vB.latest_job_match_score !== null
+      ? vB.latest_job_match_score - vA.latest_job_match_score
+      : null
+
+  const verdict = (() => {
+    if (atsDelta >= 5) {
+      return {
+        title: 'Significant Progression',
+        status: 'adopt',
+        badge: 'ADOPT VERSION B',
+        color: 'text-focus-locked',
+        bg: 'bg-focus-locked/10 border-focus-locked/30',
+        advice: `Version B improves your overall ATS calibration by +${atsDelta} points over Version A. Key formatting and keyword alignments are noticeably sharper.`,
+      }
+    }
+    if (atsDelta > 0) {
+      return {
+        title: 'Modest Optimization',
+        status: 'adopt',
+        badge: 'FAVOR VERSION B',
+        color: 'text-lens-cyan',
+        bg: 'bg-lens-cyan-dim border-lens-cyan/30',
+        advice: `Version B gained +${atsDelta} points. While subtle, the revisions elevate ATS parsability without sacrificing content depth.`,
+      }
+    }
+    if (atsDelta === 0) {
+      return {
+        title: 'Score Parity',
+        status: 'neutral',
+        badge: 'IDENTICAL CALIBRATION',
+        color: 'text-slate-300',
+        bg: 'bg-surface-elevated border-surface-border',
+        advice: 'Both versions achieved the identical ATS score. Choose the version that feels more natural in human interview presentation.',
+      }
+    }
+    return {
+      title: 'Regression Detected',
+      status: 'caution',
+      badge: 'REVIEW BEFORE SUBMITTING',
+      color: 'text-focus-lost',
+      bg: 'bg-focus-lost-dim border-focus-lost/30',
+      advice: `Version B scored ${Math.abs(atsDelta)} points lower than Version A. Check whether recent bullet edits omitted high-weight skills or altered standard section headings.`,
+    }
+  })()
+
+  return (
+    <ViewfinderFrame tag="SIDE-BY-SIDE DIFFERENTIAL">
+      <div className="card p-6 sm:p-7 space-y-6 bg-surface-card/95 shadow-2xl border-surface-border">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-surface-border pb-4">
+          <div>
+            <h2 className="font-display font-bold text-base sm:text-lg text-white flex items-center gap-2">
+              <Sparkles size={18} className="text-lens-cyan" />
+              <span>Version Differential Analysis</span>
+            </h2>
+            <p className="text-xs font-mono text-slate-400 mt-0.5">
+              Compare any two revisions directly to verify if recent edits improved or degraded ATS readability.
+            </p>
+          </div>
+
+          <span
+            className={`font-mono text-[10px] font-bold px-3 py-1 rounded-full border self-start sm:self-auto tracking-wider ${verdict.bg} ${verdict.color}`}
+          >
+            {verdict.badge}
+          </span>
+        </div>
+
+        {/* Version Pickers & Comparison Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative">
+          {/* Middle VS Badge for desktop */}
+          <div className="hidden md:flex absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-surface-elevated border border-surface-border items-center justify-center font-mono text-[11px] font-bold text-slate-400 z-10 shadow-lg">
+            VS
+          </div>
+
+          {/* Column A: Base Version */}
+          <div className="space-y-3 p-4 rounded-xl bg-surface-elevated/40 border border-surface-border">
+            <div className="flex items-center justify-between">
+              <span className="font-mono text-[10px] uppercase font-bold tracking-wider text-slate-400">
+                Baseline (Version A)
+              </span>
+              <span className="font-mono text-[10px] text-slate-500">REFERENCE</span>
+            </div>
+
+            <select
+              value={versionAId}
+              onChange={(e) => setVersionAId(e.target.value)}
+              className="w-full bg-surface-card border border-surface-border rounded-lg px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-lens-cyan"
+            >
+              {versions.map((v) => (
+                <option key={v._id} value={v._id}>
+                  {v.version_label} ({new Date(v.uploaded_at).toLocaleDateString('en-GB')}) — ATS {v.overall_ats_score}
+                </option>
+              ))}
+            </select>
+
+            <div className="pt-2 space-y-2 font-mono">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-400">ATS Overall Score:</span>
+                <span className="text-base font-bold text-white tabular-nums">{vA.overall_ats_score}/100</span>
+              </div>
+              {vA.latest_job_match_score !== null && (
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-400">Job Match Score:</span>
+                  <span className="text-sm font-semibold text-focus-locked tabular-nums">{vA.latest_job_match_score}/100</span>
+                </div>
+              )}
+              <div className="text-[11px] text-slate-500 truncate pt-1 border-t border-surface-border/50">
+                File: {vA.raw_filename}
+              </div>
+            </div>
+          </div>
+
+          {/* Column B: Comparison Version */}
+          <div className="space-y-3 p-4 rounded-xl bg-surface-elevated/40 border border-lens-cyan/30">
+            <div className="flex items-center justify-between">
+              <span className="font-mono text-[10px] uppercase font-bold tracking-wider text-lens-cyan">
+                Comparison (Version B)
+              </span>
+              <span className="font-mono text-[10px] text-lens-cyan/80">TARGET</span>
+            </div>
+
+            <select
+              value={versionBId}
+              onChange={(e) => setVersionBId(e.target.value)}
+              className="w-full bg-surface-card border border-lens-cyan/40 rounded-lg px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-lens-cyan"
+            >
+              {versions.map((v) => (
+                <option key={v._id} value={v._id}>
+                  {v.version_label} ({new Date(v.uploaded_at).toLocaleDateString('en-GB')}) — ATS {v.overall_ats_score}
+                </option>
+              ))}
+            </select>
+
+            <div className="pt-2 space-y-2 font-mono">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-400">ATS Overall Score:</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-base font-bold text-white tabular-nums">{vB.overall_ats_score}/100</span>
+                  <DeltaBadge value={atsDelta} label="pts" />
+                </div>
+              </div>
+              {vB.latest_job_match_score !== null && (
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-400">Job Match Score:</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-focus-locked tabular-nums">{vB.latest_job_match_score}/100</span>
+                    {matchDelta !== null && <DeltaBadge value={matchDelta} label="pts" />}
+                  </div>
+                </div>
+              )}
+              <div className="text-[11px] text-slate-500 truncate pt-1 border-t border-surface-border/50">
+                File: {vB.raw_filename}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Verdict & Recommendation Banner */}
+        <div className={`p-4 rounded-xl border ${verdict.bg} space-y-1.5`}>
+          <div className="flex items-center gap-2">
+            <span className={`font-mono text-xs font-bold uppercase tracking-wider ${verdict.color}`}>
+              Verdict: {verdict.title}
+            </span>
+          </div>
+          <p className="text-xs text-slate-200 leading-relaxed font-sans">
+            {verdict.advice}
+          </p>
+        </div>
+      </div>
+    </ViewfinderFrame>
+  )
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function ComparisonPage() {
@@ -554,6 +742,11 @@ export default function ComparisonPage() {
                   )
                 })}
               </div>
+
+              {/* Version A vs Version B Direct Comparator (when 2+ versions exist) */}
+              {totalVersions >= 2 && (
+                <VersionComparator versions={data.versions} />
+              )}
 
               {/* Score Progression Area Chart with semantic bands */}
               {chartData.length > 1 && (

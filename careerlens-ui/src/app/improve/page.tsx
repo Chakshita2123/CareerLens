@@ -191,11 +191,14 @@ function BulletCard({ item, index }: { item: BulletImprovement; index: number })
               </div>
             </div>
 
-            {/* Note from Model */}
+            {/* Why This is Better Explanation */}
             {item.note && (
-              <div className="flex items-start gap-2 text-xs text-slate-400 border-t border-surface-border/70 pt-3 font-sans">
-                <Sparkles size={13} className="mt-0.5 shrink-0 text-lens-cyan" />
-                <p className="leading-relaxed">{item.note}</p>
+              <div className="p-3.5 rounded-xl bg-surface-elevated/80 border border-surface-border/80 space-y-1 mt-1">
+                <div className="flex items-center gap-1.5 font-mono text-[10px] font-bold text-lens-cyan uppercase tracking-wider">
+                  <Sparkles size={12} className="text-lens-cyan" />
+                  <span>Why this is better</span>
+                </div>
+                <p className="text-xs text-slate-300 leading-relaxed font-sans">{item.note}</p>
               </div>
             )}
           </div>

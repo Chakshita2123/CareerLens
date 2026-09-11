@@ -597,9 +597,15 @@ export default function InterviewPage() {
                   <MessageSquareCode size={20} />
                 </div>
                 <div className="space-y-2 flex-1">
-                  <span className="text-[11px] font-mono text-slate-500 uppercase tracking-wider block">
-                    Interviewer Query:
-                  </span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-lens-cyan-dim border border-lens-cyan/30 text-lens-cyan font-mono text-[11px] font-semibold">
+                      <Sparkles size={12} />
+                      Personalized from your resume {includeJd ? '+ target role' : ''}
+                    </span>
+                    <span className="text-[11px] font-mono text-slate-500 uppercase tracking-wider">
+                      Interviewer Query:
+                    </span>
+                  </div>
                   <h2 className="text-lg sm:text-xl font-semibold text-white leading-relaxed">
                     {currentQuestion.question}
                   </h2>
@@ -738,6 +744,39 @@ export default function InterviewPage() {
 
                 {/* Modal Body (Scrollable) */}
                 <div className="space-y-4 overflow-y-auto pr-1 flex-1 text-sm">
+                  {/* Candidate's Submitted Answer */}
+                  {userAnswer && (
+                    <div className="p-3.5 rounded-xl bg-[#090b10] border border-surface-border/80 space-y-1.5">
+                      <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block font-semibold">
+                        Your Verbal / Written Submission:
+                      </span>
+                      <p className="text-xs text-slate-300 leading-relaxed max-h-28 overflow-y-auto italic">
+                        &ldquo;{userAnswer}&rdquo;
+                      </p>
+                    </div>
+                  )}
+
+                  {/* STAR Method Assessment */}
+                  <div className="p-3 rounded-xl bg-surface-elevated/60 border border-surface-border flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
+                    <span className="text-slate-400 uppercase text-[10px] tracking-wider font-semibold">
+                      STAR Method Coverage:
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="px-2 py-0.5 rounded bg-lens-cyan-dim border border-lens-cyan/30 text-lens-cyan text-[10px] font-bold">
+                        S / Situation
+                      </span>
+                      <span className="px-2 py-0.5 rounded bg-lens-cyan-dim border border-lens-cyan/30 text-lens-cyan text-[10px] font-bold">
+                        T / Task
+                      </span>
+                      <span className="px-2 py-0.5 rounded bg-focus-locked/15 border border-focus-locked/30 text-focus-locked text-[10px] font-bold">
+                        A / Action
+                      </span>
+                      <span className="px-2 py-0.5 rounded bg-focus-locked/15 border border-focus-locked/30 text-focus-locked text-[10px] font-bold">
+                        R / Result
+                      </span>
+                    </div>
+                  </div>
+
                   {/* Strengths */}
                   <div className="p-4 rounded-xl bg-focus-locked/5 border border-focus-locked/20 space-y-2">
                     <span className="text-xs font-mono uppercase tracking-wider text-focus-locked font-bold flex items-center gap-1.5">
