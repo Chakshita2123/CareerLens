@@ -2,10 +2,11 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useSession, signIn, signOut } from 'next-auth/react'
 import { clsx } from 'clsx'
 import {
   Scan, Target, Briefcase, Zap, BarChart2, MessageSquareCode,
-  Menu, X, FileCheck, ArrowRight, ShieldCheck
+  Menu, X, FileCheck, ArrowRight, LogIn, LogOut, User as UserIcon
 } from 'lucide-react'
 import { useSelectedVersion } from '@/lib/hooks'
 
@@ -45,17 +46,20 @@ function BrandApertureIcon() {
 
 export function Navbar() {
   const path = usePathname()
+  const { data: session, status } = useSession()
   const [versionId] = useSelectedVersion()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  // Close mobile drawer on route navigation
+  // Close mobile drawer and dropdown on route navigation
   useEffect(() => {
     setMobileMenuOpen(false)
+    setUserDropdownOpen(false)
   }, [path])
 
   return (
@@ -104,7 +108,7 @@ export function Navbar() {
           })}
         </nav>
 
-        {/* Status Indicator & Mobile Hamburger Toggle */}
+        {/* User Auth, Status Indicator & Mobile Hamburger Toggle */}
         <div className="flex items-center gap-2.5">
           {/* Active Session Indicator (Desktop) */}
           <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-elevated/70 border border-surface-border font-mono text-[10px]">
@@ -118,6 +122,71 @@ export function Navbar() {
                 <span className="w-1.5 h-1.5 rounded-full bg-slate-500" />
                 <span className="text-slate-400">No Resume Loaded</span>
               </>
+            )}
+          </div>
+
+          {/* Desktop Google User Profile / Sign In */}
+          <div className="hidden sm:flex items-center relative">
+            {status === 'loading' ? (
+              <div className="w-8 h-8 rounded-xl bg-surface-elevated animate-pulse border border-surface-border" />
+            ) : session?.user ? (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setUserDropdownOpen(open => !open)}
+                  className="flex items-center gap-2 p-1 pl-1.5 pr-2.5 rounded-xl bg-surface-card hover:bg-surface-elevated border border-surface-border hover:border-lens-cyan/40 transition-all focus-ring"
+                  aria-expanded={userDropdownOpen}
+                  aria-label="User profile menu"
+                >
+                  {session.user.image ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={session.user.image}
+                      alt={session.user.name || 'User avatar'}
+                      className="w-6 h-6 rounded-lg object-cover border border-surface-border"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <div className="w-6 h-6 rounded-lg bg-lens-cyan-dim border border-lens-cyan/40 text-lens-cyan flex items-center justify-center font-mono font-bold text-xs">
+                      {session.user.name?.[0]?.toUpperCase() || 'U'}
+                    </div>
+                  )}
+                  <span className="font-sans text-xs font-semibold text-slate-200 max-w-[100px] truncate">
+                    {session.user.name?.split(' ')[0] || 'Account'}
+                  </span>
+                </button>
+
+                {/* Profile Dropdown Menu */}
+                {userDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-[#090b10] border border-surface-border p-3 shadow-2xl z-50 space-y-2 animate-in fade-in zoom-in-95 duration-150">
+                    <div className="px-2 py-1.5 border-b border-surface-border/70 space-y-0.5">
+                      <div className="text-xs font-semibold text-white truncate">
+                        {session.user.name}
+                      </div>
+                      <div className="text-[11px] font-mono text-slate-400 truncate">
+                        {session.user.email}
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => signOut({ callbackUrl: '/' })}
+                      className="w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-mono text-focus-lost hover:bg-focus-lost-dim/40 transition-colors"
+                    >
+                      <LogOut size={13} />
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <Link
+                href="/login"
+                className="btn-secondary py-1.5 px-3 text-xs flex items-center gap-1.5 font-mono"
+              >
+                <LogIn size={13} />
+                <span>Sign In</span>
+              </Link>
             )}
           </div>
 
@@ -137,6 +206,49 @@ export function Navbar() {
       {/* Mobile Drawer Overlay */}
       {mobileMenuOpen && (
         <div className="md:hidden border-t border-surface-border/80 bg-[#06070a]/95 backdrop-blur-2xl px-4 pt-3 pb-6 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+          {/* User Auth state in mobile drawer */}
+          <div className="p-3 rounded-xl bg-surface-elevated/80 border border-surface-border space-y-2">
+            {session?.user ? (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  {session.user.image ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={session.user.image}
+                      alt={session.user.name || 'User avatar'}
+                      className="w-8 h-8 rounded-lg object-cover border border-surface-border shrink-0"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-lg bg-lens-cyan-dim border border-lens-cyan/40 text-lens-cyan flex items-center justify-center font-mono font-bold text-xs shrink-0">
+                      {session.user.name?.[0]?.toUpperCase() || 'U'}
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <div className="text-xs font-semibold text-white truncate">{session.user.name}</div>
+                    <div className="text-[10px] font-mono text-slate-400 truncate">{session.user.email}</div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => signOut({ callbackUrl: '/' })}
+                  className="p-1.5 text-focus-lost hover:bg-focus-lost-dim rounded-lg transition-colors"
+                  title="Sign Out"
+                >
+                  <LogOut size={16} />
+                </button>
+              </div>
+            ) : (
+              <Link
+                href="/login"
+                className="w-full btn-primary py-2 text-xs flex items-center justify-center gap-2 font-mono"
+              >
+                <LogIn size={14} />
+                <span>Sign in with Google</span>
+              </Link>
+            )}
+          </div>
+
           {/* Active Resume status in mobile drawer */}
           <div className="flex items-center justify-between p-2.5 rounded-xl bg-surface-elevated/60 border border-surface-border text-xs font-mono">
             <span className="text-slate-400">Profile Status:</span>

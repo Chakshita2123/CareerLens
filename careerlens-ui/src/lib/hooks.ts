@@ -34,29 +34,34 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
   return [stored, set] as const
 }
 
+import { useSession } from 'next-auth/react'
+
 /**
- * Generate and persist a stable random user ID in localStorage.
- * Initialized safely via useEffect to prevent SSR hydration mismatches.
+ * Return authenticated Google user ID (sub or email), falling back
+ * to guest ID if unauthenticated.
  */
 export function useUserId(): string {
-  const [userId, setUserId] = useState<string>('')
+  const { data: session } = useSession()
+  const [guestId, setGuestId] = useState<string>('')
 
   useEffect(() => {
     try {
       const existing = window.localStorage.getItem('cl_user_id')
       if (existing) {
-        setUserId(existing)
+        setGuestId(existing)
         return
       }
-      const id = `user_${Math.random().toString(36).slice(2, 10)}`
+      const id = `guest_${Math.random().toString(36).slice(2, 10)}`
       window.localStorage.setItem('cl_user_id', id)
-      setUserId(id)
+      setGuestId(id)
     } catch {
-      setUserId(`user_${Math.random().toString(36).slice(2, 10)}`)
+      setGuestId(`guest_${Math.random().toString(36).slice(2, 10)}`)
     }
   }, [])
 
-  return userId
+  if (session?.user?.id) return session.user.id
+  if (session?.user?.email) return session.user.email
+  return guestId
 }
 
 /**

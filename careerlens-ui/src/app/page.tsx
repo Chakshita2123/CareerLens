@@ -4,8 +4,9 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Upload, FileText, CheckCircle2, ChevronDown, ChevronUp, AlertCircle,
   Sparkles, Shield, Target, Briefcase, Zap, ArrowRight, Layers, FileCheck,
-  Scan, Crosshair, Eye, Compass, Sliders, Download, Loader2, Clock
+  Scan, Crosshair, Eye, Compass, Sliders, Download, Loader2, Clock, LogIn
 } from 'lucide-react'
+import { useSession, signIn } from 'next-auth/react'
 import { useUserId, useSelectedVersion } from '@/lib/hooks'
 import { uploadResume, downloadPdfReport } from '@/lib/api'
 import type { ResumeVersion, ATSBreakdownItem } from '@/lib/api'
@@ -120,6 +121,7 @@ const WORKFLOW_STEPS = [
 ]
 
 export default function UploadPage() {
+  const { data: session, status: authStatus } = useSession()
   const userId = useUserId()
   const [, setVersionId] = useSelectedVersion()
 
@@ -175,8 +177,12 @@ export default function UploadPage() {
   const handleFile = useCallback(
     async (file: File) => {
       if (!file) return
+      if (authStatus === 'unauthenticated') {
+        signIn('google', { callbackUrl: '/' })
+        return
+      }
       if (!userId) {
-        setError('User session not ready — please refresh the page and try again.')
+        setError('User session initializing — please try again in a moment.')
         return
       }
       setError(null)
@@ -192,7 +198,7 @@ export default function UploadPage() {
         setLoading(false)
       }
     },
-    [userId, label, setVersionId]
+    [authStatus, userId, label, setVersionId]
   )
 
   const onDrop = useCallback(
@@ -297,6 +303,24 @@ export default function UploadPage() {
                              focus:border-lens-cyan/60 focus:bg-surface-elevated font-mono text-xs transition-all"
                 />
               </div>
+
+              {/* Sign in with Google callout if unauthenticated */}
+              {authStatus === 'unauthenticated' && (
+                <div className="p-3.5 rounded-xl bg-lens-cyan-dim/30 border border-lens-cyan/30 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-2.5 text-slate-200">
+                    <Sparkles size={16} className="text-lens-cyan shrink-0" />
+                    <span>Sign in with Google to associate uploads with your account and persist version history.</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => signIn('google', { callbackUrl: '/' })}
+                    className="btn-primary text-xs py-1.5 px-3.5 whitespace-nowrap flex items-center gap-1.5 shrink-0"
+                  >
+                    <LogIn size={13} />
+                    <span>Sign in with Google</span>
+                  </button>
+                </div>
+              )}
 
               {/* Interactive Dropzone with Laser Scan Beam */}
               <div
