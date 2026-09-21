@@ -357,7 +357,7 @@ export default function ImprovePage() {
                   title={error.includes('waking up') ? 'Backend Initializing' : 'Enhancement Alert'}
                   message={error}
                   onDismiss={() => setError(null)}
-                  onRetry={fetchImprovements}
+                  onRetry={handleImprove}
                   retryLabel="Retry Enhancement"
                 />
               )}

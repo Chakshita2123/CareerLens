@@ -297,7 +297,7 @@ export default function InterviewPage() {
               title={error.includes('waking up') ? 'Backend Initializing' : 'Interview Session Alert'}
               message={error}
               onDismiss={() => setError(null)}
-              onRetry={sessionId ? undefined : handleStartSession}
+              onRetry={sessionId ? undefined : handleStartInterview}
               retryLabel="Retry Starting Session"
             />
           </div>

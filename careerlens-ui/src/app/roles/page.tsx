@@ -412,7 +412,7 @@ export default function RolesPage() {
                   title={error.includes('waking up') ? 'Backend Initializing' : 'Recommendation Alert'}
                   message={error}
                   onDismiss={() => setError(null)}
-                  onRetry={fetchRecs}
+                  onRetry={handleLoad}
                   retryLabel="Retry Recommendations"
                 />
               )}
