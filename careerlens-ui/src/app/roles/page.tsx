@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Briefcase, ChevronDown, ChevronUp, AlertCircle, Sparkles,
   Award, CheckCircle2, Link2, XCircle, ArrowRight, Loader2,
-  Compass, Crosshair, Target
+  Compass, Crosshair, Target, Zap
 } from 'lucide-react'
 import { useSelectedVersion, useUserId } from '@/lib/hooks'
 import { getRecommendations, listVersions } from '@/lib/api'
