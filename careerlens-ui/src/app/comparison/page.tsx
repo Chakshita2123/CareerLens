@@ -668,7 +668,7 @@ export default function ComparisonPage() {
               title={error.includes('waking up') ? 'Backend Initializing' : 'Timeline History Alert'}
               message={error}
               onDismiss={() => setError(null)}
-              onRetry={fetchComparison}
+              onRetry={handleLoad}
               retryLabel="Retry Loading Timeline"
             />
           </div>
