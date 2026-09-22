@@ -5,8 +5,8 @@ const nextConfig = {
   async rewrites() {
     return [
       {
-        source: '/api/:path*',
-        destination: `${API_URL}/:path*`,
+        source: '/api/:path((?!auth).*)',
+        destination: `${API_URL}/:path`,
       },
     ];
   },

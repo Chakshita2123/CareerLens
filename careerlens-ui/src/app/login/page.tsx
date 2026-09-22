@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect } from 'react'
+import React, { Suspense, useEffect } from 'react'
 import { signIn, useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
@@ -34,7 +34,12 @@ function GoogleLogo({ size = 20 }: { size?: number }) {
   )
 }
 
-export default function LoginPage() {
+/**
+ * Inner login UI — extracted into its own component so that `useSearchParams()`
+ * is contained within a Suspense boundary (required by Next.js App Router for
+ * pages that may be statically prerendered at build time).
+ */
+function LoginContent() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -52,6 +57,74 @@ export default function LoginPage() {
   }
 
   return (
+    <ViewfinderFrame tag="AUTH-LOCK" active glow>
+      <div className="card p-7 sm:p-9 space-y-6 bg-surface-card/95 backdrop-blur-2xl shadow-2xl border-surface-border">
+
+        {/* Header Badge & Title */}
+        <div className="text-center space-y-2.5">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-lens-cyan-dim border border-lens-cyan/30 text-lens-cyan text-xs font-mono font-semibold tracking-wider">
+            <Sparkles size={13} />
+            <span>AUTHENTICATION GATEWAY</span>
+          </div>
+
+          <h1 className="text-2xl sm:text-3xl font-display font-extrabold text-white">
+            Welcome to Career<span className="text-lens-cyan">Lens</span>
+          </h1>
+
+          <p className="text-xs sm:text-sm text-slate-400 font-sans leading-relaxed max-w-xs mx-auto">
+            Sign in with your Google account to calibrate your resume, save ATS history, and run AI mock interviews.
+          </p>
+        </div>
+
+        {/* Google OAuth Action Button */}
+        <div className="pt-2">
+          <button
+            type="button"
+            onClick={handleGoogleSignIn}
+            disabled={status === 'loading'}
+            className="w-full flex items-center justify-center gap-3 py-3.5 px-5 rounded-xl bg-white hover:bg-slate-100 text-slate-900 font-semibold text-sm transition-all duration-200 shadow-lg hover:shadow-[0_0_24px_rgba(255,255,255,0.25)] active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {status === 'loading' ? (
+              <ApertureSpinner size={20} />
+            ) : (
+              <>
+                <GoogleLogo size={20} />
+                <span>Continue with Google</span>
+                <ArrowRight size={16} className="text-slate-500 ml-auto" />
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* Value Proposition Checklist */}
+        <div className="space-y-2.5 pt-4 border-t border-surface-border/70 text-xs text-slate-400 font-mono">
+          <div className="flex items-center gap-2.5">
+            <CheckCircle2 size={14} className="text-focus-locked shrink-0" />
+            <span>Deterministic ATS Scoring (100% private)</span>
+          </div>
+          <div className="flex items-center gap-2.5">
+            <CheckCircle2 size={14} className="text-focus-locked shrink-0" />
+            <span>Resume version progression tracking across devices</span>
+          </div>
+          <div className="flex items-center gap-2.5">
+            <CheckCircle2 size={14} className="text-focus-locked shrink-0" />
+            <span>Grounded AI mock interview simulator</span>
+          </div>
+        </div>
+
+        {/* Security Guarantee */}
+        <div className="p-3 rounded-xl bg-surface-elevated/50 border border-surface-border flex items-center gap-2.5 text-[11px] text-slate-400">
+          <Shield size={16} className="text-lens-cyan shrink-0" />
+          <span>We only request your basic profile and email. Your resume files are never shared or sold.</span>
+        </div>
+
+      </div>
+    </ViewfinderFrame>
+  )
+}
+
+export default function LoginPage() {
+  return (
     <div className="min-h-[calc(100vh-3.5rem)] flex items-center justify-center px-4 py-12 relative overflow-hidden">
       {/* Optical Background Glows */}
       <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[600px] h-[350px] bg-lens-cyan/10 blur-[130px] rounded-full pointer-events-none -z-10" />
@@ -63,70 +136,16 @@ export default function LoginPage() {
         transition={{ duration: 0.4 }}
         className="w-full max-w-md"
       >
-        <ViewfinderFrame tag="AUTH-LOCK" active glow>
-          <div className="card p-7 sm:p-9 space-y-6 bg-surface-card/95 backdrop-blur-2xl shadow-2xl border-surface-border">
-            
-            {/* Header Badge & Title */}
-            <div className="text-center space-y-2.5">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-lens-cyan-dim border border-lens-cyan/30 text-lens-cyan text-xs font-mono font-semibold tracking-wider">
-                <Sparkles size={13} />
-                <span>AUTHENTICATION GATEWAY</span>
-              </div>
-
-              <h1 className="text-2xl sm:text-3xl font-display font-extrabold text-white">
-                Welcome to Career<span className="text-lens-cyan">Lens</span>
-              </h1>
-
-              <p className="text-xs sm:text-sm text-slate-400 font-sans leading-relaxed max-w-xs mx-auto">
-                Sign in with your Google account to calibrate your resume, save ATS history, and run AI mock interviews.
-              </p>
-            </div>
-
-            {/* Google OAuth Action Button */}
-            <div className="pt-2">
-              <button
-                type="button"
-                onClick={handleGoogleSignIn}
-                disabled={status === 'loading'}
-                className="w-full flex items-center justify-center gap-3 py-3.5 px-5 rounded-xl bg-white hover:bg-slate-100 text-slate-900 font-semibold text-sm transition-all duration-200 shadow-lg hover:shadow-[0_0_24px_rgba(255,255,255,0.25)] active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                {status === 'loading' ? (
-                  <ApertureSpinner size={20} />
-                ) : (
-                  <>
-                    <GoogleLogo size={20} />
-                    <span>Continue with Google</span>
-                    <ArrowRight size={16} className="text-slate-500 ml-auto" />
-                  </>
-                )}
-              </button>
-            </div>
-
-            {/* Value Proposition Checklist */}
-            <div className="space-y-2.5 pt-4 border-t border-surface-border/70 text-xs text-slate-400 font-mono">
-              <div className="flex items-center gap-2.5">
-                <CheckCircle2 size={14} className="text-focus-locked shrink-0" />
-                <span>Deterministic ATS Scoring (100% private)</span>
-              </div>
-              <div className="flex items-center gap-2.5">
-                <CheckCircle2 size={14} className="text-focus-locked shrink-0" />
-                <span>Resume version progression tracking across devices</span>
-              </div>
-              <div className="flex items-center gap-2.5">
-                <CheckCircle2 size={14} className="text-focus-locked shrink-0" />
-                <span>Grounded AI mock interview simulator</span>
-              </div>
-            </div>
-
-            {/* Security Guarantee */}
-            <div className="p-3 rounded-xl bg-surface-elevated/50 border border-surface-border flex items-center gap-2.5 text-[11px] text-slate-400">
-              <Shield size={16} className="text-lens-cyan shrink-0" />
-              <span>We only request your basic profile and email. Your resume files are never shared or sold.</span>
-            </div>
-
-          </div>
-        </ViewfinderFrame>
+        {/*
+          Suspense boundary is required by Next.js App Router: any component that
+          calls useSearchParams() must be wrapped in <Suspense> so Next.js can
+          render a static shell during the build step without crashing.
+        */}
+        <Suspense fallback={<ApertureSpinner size={32} />}>
+          <LoginContent />
+        </Suspense>
       </motion.div>
     </div>
   )
 }
+
