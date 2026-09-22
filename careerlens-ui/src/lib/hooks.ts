@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { useSession } from 'next-auth/react'
 
 /**
  * Persist a value to localStorage, hydrating safely on the client only.
@@ -33,8 +34,6 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
 
   return [stored, set] as const
 }
-
-import { useSession } from 'next-auth/react'
 
 /**
  * Return authenticated Google user ID (sub or email), falling back
@@ -140,4 +139,55 @@ export function useDebounce<T>(value: T, delay: number): T {
     return () => clearTimeout(timer)
   }, [value, delay])
   return debounced
+}
+
+/**
+ * Gate any action behind authentication.
+ *
+ * Usage:
+ *   const { requireAuth, modalOpen, closeModal, modalMessage } = useRequireAuth()
+ *
+ *   // In a button handler:
+ *   requireAuth(() => doSomething(), 'Sign in to analyze your resume')
+ *
+ * If authenticated: runs the action immediately.
+ * If not: opens the auth gate modal; re-runs the action automatically
+ * when the session changes to authenticated (i.e. after Google OAuth completes).
+ */
+export function useRequireAuth() {
+  const { status } = useSession()
+  const [modalOpen, setModalOpen] = useState(false)
+  const [modalMessage, setModalMessage] = useState<string | undefined>(undefined)
+  const pendingCallbackRef = useRef<(() => void) | null>(null)
+
+  // When session becomes authenticated, fire any pending callback
+  useEffect(() => {
+    if (status === 'authenticated' && pendingCallbackRef.current) {
+      const cb = pendingCallbackRef.current
+      pendingCallbackRef.current = null
+      setModalOpen(false)
+      // Give modal close animation a frame to start before running the action
+      setTimeout(() => cb(), 100)
+    }
+  }, [status])
+
+  const requireAuth = useCallback(
+    (action: () => void | Promise<void>, message?: string) => {
+      if (status === 'authenticated') {
+        action()
+      } else {
+        pendingCallbackRef.current = action as () => void
+        setModalMessage(message)
+        setModalOpen(true)
+      }
+    },
+    [status]
+  )
+
+  const closeModal = useCallback(() => {
+    setModalOpen(false)
+    pendingCallbackRef.current = null
+  }, [])
+
+  return { requireAuth, modalOpen, closeModal, modalMessage }
 }

@@ -6,7 +6,7 @@ import {
   Award, CheckCircle2, Link2, XCircle, ArrowRight, Loader2,
   Compass, Crosshair, Target, Zap
 } from 'lucide-react'
-import { useSelectedVersion, useUserId } from '@/lib/hooks'
+import { useSelectedVersion, useUserId, useRequireAuth } from '@/lib/hooks'
 import { getRecommendations, listVersions } from '@/lib/api'
 import type { RoleRecommendation, ResumeVersion } from '@/lib/api'
 import { ApertureGauge } from '@/components/ui/ApertureGauge'
@@ -15,6 +15,7 @@ import { SkillChip } from '@/components/ui/SkillChip'
 import { ApertureSpinner, SkeletonCard } from '@/components/ui/Skeleton'
 import { ScanSweep } from '@/components/ui/ScanSweep'
 import { StatusAlert } from '@/components/ui/StatusAlert'
+import { AuthGateModal } from '@/components/ui/AuthGateModal'
 import Link from 'next/link'
 
 function scoreBadge(score: number) {
@@ -270,6 +271,7 @@ function RoleCard({
 export default function RolesPage() {
   const userId = useUserId()
   const [versionId, setVersionId] = useSelectedVersion()
+  const { requireAuth, modalOpen, closeModal, modalMessage } = useRequireAuth()
   const [versions, setVersions] = useState<ResumeVersion[]>([])
   const [selectedId, setSelectedId] = useState('')
   const [loading, setLoading] = useState(false)
@@ -302,16 +304,14 @@ export default function RolesPage() {
 
   const handleLoad = async () => {
     if (!selectedId) return
-    setError(null)
-    setLoading(true)
-    try {
-      const data = await getRecommendations(selectedId, 6)
-      setRecs(data.recommendations)
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to generate recommendations')
-    } finally {
-      setLoading(false)
-    }
+    requireAuth(() => {
+      setError(null)
+      setLoading(true)
+      getRecommendations(selectedId, 6)
+        .then((data) => setRecs(data.recommendations))
+        .catch((e: unknown) => setError(e instanceof Error ? e.message : 'Failed to generate recommendations'))
+        .finally(() => setLoading(false))
+    }, 'Sign in to get role recommendations')
   }
 
   return (
@@ -491,6 +491,14 @@ export default function RolesPage() {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Auth Gate Modal */}
+      <AuthGateModal
+        isOpen={modalOpen}
+        onClose={closeModal}
+        message={modalMessage ?? 'Sign in to get role recommendations'}
+        detail="Sign in with Google to benchmark your profile against 25+ calibrated career roles."
+      />
     </div>
   )
 }

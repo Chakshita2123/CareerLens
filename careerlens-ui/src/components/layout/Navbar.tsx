@@ -180,13 +180,15 @@ export function Navbar() {
                 )}
               </div>
             ) : (
-              <Link
-                href="/login"
+              <button
+                type="button"
+                id="navbar-signin-btn"
+                onClick={() => signIn('google')}
                 className="btn-secondary py-1.5 px-3 text-xs flex items-center gap-1.5 font-mono"
               >
                 <LogIn size={13} />
                 <span>Sign In</span>
-              </Link>
+              </button>
             )}
           </div>
 
@@ -239,13 +241,15 @@ export function Navbar() {
                 </button>
               </div>
             ) : (
-              <Link
-                href="/login"
+              <button
+                type="button"
+                id="navbar-mobile-signin-btn"
+                onClick={() => signIn('google')}
                 className="w-full btn-primary py-2 text-xs flex items-center justify-center gap-2 font-mono"
               >
                 <LogIn size={14} />
                 <span>Sign in with Google</span>
-              </Link>
+              </button>
             )}
           </div>
 

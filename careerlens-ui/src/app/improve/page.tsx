@@ -6,12 +6,13 @@ import {
   ChevronDown, ArrowRight, Loader2, RefreshCw, FileText, CheckCheck,
   Crosshair, Sliders
 } from 'lucide-react'
-import { useSelectedVersion, useUserId } from '@/lib/hooks'
+import { useSelectedVersion, useUserId, useRequireAuth } from '@/lib/hooks'
 import { improveBullets, listVersions } from '@/lib/api'
 import type { BulletImprovement, ResumeVersion } from '@/lib/api'
 import { ViewfinderFrame } from '@/components/ui/ViewfinderFrame'
 import { ApertureSpinner, SkeletonCard } from '@/components/ui/Skeleton'
 import { StatusAlert } from '@/components/ui/StatusAlert'
+import { AuthGateModal } from '@/components/ui/AuthGateModal'
 import Link from 'next/link'
 
 const PROVIDER_BADGE: Record<string, { label: string; cls: string }> = {
@@ -211,6 +212,7 @@ function BulletCard({ item, index }: { item: BulletImprovement; index: number })
 export default function ImprovePage() {
   const userId = useUserId()
   const [versionId, setVersionId] = useSelectedVersion()
+  const { requireAuth, modalOpen, closeModal, modalMessage } = useRequireAuth()
   const [versions, setVersions] = useState<ResumeVersion[]>([])
   const [selectedId, setSelectedId] = useState('')
   const [loading, setLoading] = useState(false)
@@ -243,20 +245,20 @@ export default function ImprovePage() {
 
   const handleImprove = async () => {
     if (!selectedId) return
-    setError(null)
-    setLoading(true)
-    try {
-      const data = await improveBullets(selectedId)
-      setResult({
-        total: data.total_bullets_checked,
-        weak: data.weak_bullets_found,
-        items: data.improvements,
-      })
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to generate bullet improvements')
-    } finally {
-      setLoading(false)
-    }
+    requireAuth(() => {
+      setError(null)
+      setLoading(true)
+      improveBullets(selectedId)
+        .then((data) => {
+          setResult({
+            total: data.total_bullets_checked,
+            weak: data.weak_bullets_found,
+            items: data.improvements,
+          })
+        })
+        .catch((e: unknown) => setError(e instanceof Error ? e.message : 'Failed to generate bullet improvements'))
+        .finally(() => setLoading(false))
+    }, 'Sign in to improve your resume bullets')
   }
 
   return (
@@ -470,6 +472,14 @@ export default function ImprovePage() {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Auth Gate Modal */}
+      <AuthGateModal
+        isOpen={modalOpen}
+        onClose={closeModal}
+        message={modalMessage ?? 'Sign in to improve your bullets'}
+        detail="Sign in with Google to run AI-powered bullet enhancements on your resume."
+      />
     </div>
   )
 }

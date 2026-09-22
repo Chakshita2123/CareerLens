@@ -23,7 +23,7 @@ import {
   Sparkle
 } from 'lucide-react'
 import { clsx } from 'clsx'
-import { useUserId, useSelectedVersion } from '@/lib/hooks'
+import { useUserId, useSelectedVersion, useRequireAuth } from '@/lib/hooks'
 import {
   listVersions,
   ResumeVersion,
@@ -39,6 +39,7 @@ import {
   InterviewSessionSummaryItem,
 } from '@/lib/api'
 import { StatusAlert } from '@/components/ui/StatusAlert'
+import { AuthGateModal } from '@/components/ui/AuthGateModal'
 
 // ─── Optical Aperture Spinning Component ─────────────────────────────────────
 
@@ -67,6 +68,7 @@ function ApertureSpinner({ size = 28 }: { size?: number }) {
 export default function InterviewPage() {
   const userId = useUserId()
   const [versionId, setVersionId] = useSelectedVersion()
+  const { requireAuth, modalOpen, closeModal, modalMessage } = useRequireAuth()
 
   // Data states
   const [versions, setVersions] = useState<ResumeVersion[]>([])
@@ -143,28 +145,26 @@ export default function InterviewPage() {
   // Start new mock interview
   const handleStartInterview = async () => {
     if (!selectedVersionId) return
-    setError(null)
-    setStartingSession(true)
-    try {
-      const res: InterviewStartResponse = await startInterview(
-        selectedVersionId,
-        null, // Can link match ID if saved
-        questionCount
-      )
-      setSessionId(res._id)
-      setCurrentQuestion(res.first_question)
-      setQuestionIndex(0)
-      setTotalQuestions(res.total_questions)
-      setUserAnswer('')
-      setLastFeedback(null)
-      setShowFeedbackModal(false)
-      setIsCompleted(false)
-      setSessionDetail(null)
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to initialize mock interview.')
-    } finally {
-      setStartingSession(false)
-    }
+    requireAuth(() => {
+      setError(null)
+      setStartingSession(true)
+      startInterview(selectedVersionId, null, questionCount)
+        .then((res: InterviewStartResponse) => {
+          setSessionId(res._id)
+          setCurrentQuestion(res.first_question)
+          setQuestionIndex(0)
+          setTotalQuestions(res.total_questions)
+          setUserAnswer('')
+          setLastFeedback(null)
+          setShowFeedbackModal(false)
+          setIsCompleted(false)
+          setSessionDetail(null)
+        })
+        .catch((err: unknown) => {
+          setError(err instanceof Error ? err.message : 'Failed to initialize mock interview.')
+        })
+        .finally(() => setStartingSession(false))
+    }, 'Sign in to start your mock interview')
   }
 
   // Submit Answer
@@ -1037,6 +1037,14 @@ export default function InterviewPage() {
           </div>
         )}
       </div>
+
+      {/* Auth Gate Modal */}
+      <AuthGateModal
+        isOpen={modalOpen}
+        onClose={closeModal}
+        message={modalMessage ?? 'Sign in to start your mock interview'}
+        detail="Sign in with Google to run AI mock interview sessions and track your progress."
+      />
     </div>
   )
 }

@@ -7,7 +7,7 @@ import {
   ArrowRight, Briefcase, Zap, FileText, Loader2, Crosshair,
   Sliders, Compass, Layers, Download, Columns, Plus, Trash2, Trophy, Check
 } from 'lucide-react'
-import { useSelectedVersion, useDebounce, useUserId } from '@/lib/hooks'
+import { useSelectedVersion, useDebounce, useUserId, useRequireAuth } from '@/lib/hooks'
 import { matchResume, listVersions, downloadPdfReport, matchMultipleResumes } from '@/lib/api'
 import type { JobMatchResult, ResumeVersion, MultiMatchResponse, MultiMatchComparisonItem } from '@/lib/api'
 import { ApertureGauge } from '@/components/ui/ApertureGauge'
@@ -15,6 +15,7 @@ import { ViewfinderFrame } from '@/components/ui/ViewfinderFrame'
 import { SkillChip } from '@/components/ui/SkillChip'
 import { SkeletonRing, SkeletonChips, SkeletonCard } from '@/components/ui/Skeleton'
 import { StatusAlert } from '@/components/ui/StatusAlert'
+import { AuthGateModal } from '@/components/ui/AuthGateModal'
 import Link from 'next/link'
 
 const SAMPLE_JDS = [
@@ -135,6 +136,7 @@ function ScoreBar({
 export default function MatchPage() {
   const userId = useUserId()
   const [versionId, setVersionId] = useSelectedVersion()
+  const { requireAuth, modalOpen, closeModal, modalMessage } = useRequireAuth()
   const [versions, setVersions] = useState<ResumeVersion[]>([])
   const [selectedId, setSelectedId] = useState('')
   const [jd, setJd] = useState('')
@@ -180,21 +182,20 @@ export default function MatchPage() {
 
   const handleMatch = async () => {
     if (!selectedId || jd.trim().length < 50) return
-    setError(null)
-    setLoading(true)
-    try {
-      const res = await matchResume(selectedId, jd)
-      setMatchId(res._id)
-      setResult(res.job_match_result)
-      // Smooth scroll down to results
-      setTimeout(() => {
-        document.getElementById('match-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      }, 100)
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Match failed')
-    } finally {
-      setLoading(false)
-    }
+    requireAuth(() => {
+      setError(null)
+      setLoading(true)
+      matchResume(selectedId, jd)
+        .then((res) => {
+          setMatchId(res._id)
+          setResult(res.job_match_result)
+          setTimeout(() => {
+            document.getElementById('match-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          }, 100)
+        })
+        .catch((e: unknown) => setError(e instanceof Error ? e.message : 'Match failed'))
+        .finally(() => setLoading(false))
+    }, 'Sign in to run job match analysis')
   }
 
   const handleDownloadPdf = async () => {
@@ -281,23 +282,23 @@ export default function MatchPage() {
       setMultiError('Please provide at least 2 job descriptions with 20+ characters each.')
       return
     }
-    setMultiError(null)
-    setMultiLoading(true)
-    try {
+    requireAuth(() => {
+      setMultiError(null)
+      setMultiLoading(true)
       const payload = valid.map(j => ({
         label: j.label.trim() || undefined,
         job_description_text: j.text.trim(),
       }))
-      const res = await matchMultipleResumes(selectedId, payload)
-      setMultiResult(res)
-      setTimeout(() => {
-        document.getElementById('multi-match-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      }, 100)
-    } catch (e: unknown) {
-      setMultiError(e instanceof Error ? e.message : 'Multi-JD comparison failed')
-    } finally {
-      setMultiLoading(false)
-    }
+      matchMultipleResumes(selectedId, payload)
+        .then((res) => {
+          setMultiResult(res)
+          setTimeout(() => {
+            document.getElementById('multi-match-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          }, 100)
+        })
+        .catch((e: unknown) => setMultiError(e instanceof Error ? e.message : 'Multi-JD comparison failed'))
+        .finally(() => setMultiLoading(false))
+    }, 'Sign in to compare multiple job descriptions')
   }
 
   const match = result
@@ -1308,6 +1309,14 @@ export default function MatchPage() {
         </div>
       )}
       </div>
+
+      {/* Auth Gate Modal */}
+      <AuthGateModal
+        isOpen={modalOpen}
+        onClose={closeModal}
+        message={modalMessage ?? 'Sign in to run match analysis'}
+        detail="Sign in with Google to match your resume against job descriptions and save results."
+      />
     </div>
   )
 }

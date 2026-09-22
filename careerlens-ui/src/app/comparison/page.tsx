@@ -6,7 +6,7 @@ import {
   Sparkles, Calendar, FileText, RefreshCw,
   Clock, CheckCircle2, Target, Zap, Plus, Upload,
 } from 'lucide-react'
-import { useUserId, useSelectedVersion } from '@/lib/hooks'
+import { useUserId, useSelectedVersion, useRequireAuth } from '@/lib/hooks'
 import { getComparison } from '@/lib/api'
 import type { ComparisonEntry, ComparisonResponse } from '@/lib/api'
 import {
@@ -17,6 +17,7 @@ import { ApertureGauge } from '@/components/ui/ApertureGauge'
 import { ViewfinderFrame } from '@/components/ui/ViewfinderFrame'
 import { ApertureSpinner } from '@/components/ui/Skeleton'
 import { StatusAlert } from '@/components/ui/StatusAlert'
+import { AuthGateModal } from '@/components/ui/AuthGateModal'
 import Link from 'next/link'
 
 // ─── Delta Badge ──────────────────────────────────────────────────────────────
@@ -578,6 +579,7 @@ function VersionComparator({ versions }: { versions: ComparisonEntry[] }) {
 export default function ComparisonPage() {
   const userId = useUserId()
   const [, setVersionId] = useSelectedVersion()
+  const { requireAuth, modalOpen, closeModal, modalMessage } = useRequireAuth()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<ComparisonResponse | null>(null)
@@ -585,20 +587,20 @@ export default function ComparisonPage() {
 
   const handleLoad = useCallback(async () => {
     if (!userId) return
-    setError(null)
-    setLoading(true)
-    try {
-      const res = await getComparison(userId)
-      setData(res)
-      if (res.versions.length > 0) {
-        setVersionId(res.versions[res.versions.length - 1]._id)
-      }
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to load comparison')
-    } finally {
-      setLoading(false)
-    }
-  }, [userId, setVersionId])
+    requireAuth(() => {
+      setError(null)
+      setLoading(true)
+      getComparison(userId)
+        .then((res) => {
+          setData(res)
+          if (res.versions.length > 0) {
+            setVersionId(res.versions[res.versions.length - 1]._id)
+          }
+        })
+        .catch((e: unknown) => setError(e instanceof Error ? e.message : 'Failed to load comparison'))
+        .finally(() => setLoading(false))
+    }, 'Sign in to view your version history')
+  }, [userId, setVersionId, requireAuth])
 
   useEffect(() => {
     if (userId) handleLoad()
@@ -919,6 +921,14 @@ export default function ComparisonPage() {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Auth Gate Modal */}
+      <AuthGateModal
+        isOpen={modalOpen}
+        onClose={closeModal}
+        message={modalMessage ?? 'Sign in to view your version history'}
+        detail="Sign in with Google to see your resume version timeline and ATS score progression."
+      />
     </div>
   )
 }

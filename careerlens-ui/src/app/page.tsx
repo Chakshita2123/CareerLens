@@ -4,10 +4,10 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Upload, FileText, CheckCircle2, ChevronDown, ChevronUp, AlertCircle,
   Sparkles, Shield, Target, Briefcase, Zap, ArrowRight, Layers, FileCheck,
-  Scan, Crosshair, Eye, Compass, Sliders, Download, Loader2, Clock, LogIn
+  Scan, Crosshair, Eye, Compass, Sliders, Download, Loader2, Clock
 } from 'lucide-react'
-import { useSession, signIn } from 'next-auth/react'
-import { useUserId, useSelectedVersion } from '@/lib/hooks'
+import { useSession } from 'next-auth/react'
+import { useUserId, useSelectedVersion, useRequireAuth } from '@/lib/hooks'
 import { uploadResume, downloadPdfReport } from '@/lib/api'
 import type { ResumeVersion, ATSBreakdownItem } from '@/lib/api'
 import { ApertureGauge } from '@/components/ui/ApertureGauge'
@@ -16,6 +16,7 @@ import { ScanSweep } from '@/components/ui/ScanSweep'
 import { SkeletonRing, SkeletonCard } from '@/components/ui/Skeleton'
 import { StatusAlert } from '@/components/ui/StatusAlert'
 import { HeroScannerGraphic } from '@/components/ui/HeroScannerGraphic'
+import { AuthGateModal } from '@/components/ui/AuthGateModal'
 import Link from 'next/link'
 
 function scoreColor(ratio: number) {
@@ -121,9 +122,10 @@ const WORKFLOW_STEPS = [
 ]
 
 export default function UploadPage() {
-  const { data: session, status: authStatus } = useSession()
+  const { data: session } = useSession()
   const userId = useUserId()
   const [, setVersionId] = useSelectedVersion()
+  const { requireAuth, modalOpen, closeModal, modalMessage } = useRequireAuth()
 
   const [dragging, setDragging] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -177,28 +179,28 @@ export default function UploadPage() {
   const handleFile = useCallback(
     async (file: File) => {
       if (!file) return
-      if (authStatus === 'unauthenticated') {
-        signIn('google', { callbackUrl: '/' })
-        return
-      }
-      if (!userId) {
-        setError('User session initializing — please try again in a moment.')
-        return
-      }
-      setError(null)
-      setLoading(true)
-      try {
-        const versionLabel = label.trim() || `v${Date.now().toString().slice(-4)} — ${file.name}`
-        const data = await uploadResume(file, userId, versionLabel)
-        setResult(data)
-        setVersionId(data._id)
-      } catch (e: unknown) {
-        setError(e instanceof Error ? e.message : 'Upload failed')
-      } finally {
-        setLoading(false)
-      }
+
+      // Wrap the actual upload in requireAuth so unauthenticated users see the modal
+      requireAuth(async () => {
+        if (!userId) {
+          setError('User session initializing — please try again in a moment.')
+          return
+        }
+        setError(null)
+        setLoading(true)
+        try {
+          const versionLabel = label.trim() || `v${Date.now().toString().slice(-4)} — ${file.name}`
+          const data = await uploadResume(file, userId, versionLabel)
+          setResult(data)
+          setVersionId(data._id)
+        } catch (e: unknown) {
+          setError(e instanceof Error ? e.message : 'Upload failed')
+        } finally {
+          setLoading(false)
+        }
+      }, 'Sign in to analyze your resume')
     },
-    [authStatus, userId, label, setVersionId]
+    [requireAuth, userId, label, setVersionId]
   )
 
   const onDrop = useCallback(
@@ -304,19 +306,20 @@ export default function UploadPage() {
                 />
               </div>
 
-              {/* Sign in with Google callout if unauthenticated */}
-              {authStatus === 'unauthenticated' && (
+              {/* Sign in nudge if unauthenticated — opens the modal */}
+              {!session?.user && (
                 <div className="p-3.5 rounded-xl bg-lens-cyan-dim/30 border border-lens-cyan/30 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
                   <div className="flex items-center gap-2.5 text-slate-200">
                     <Sparkles size={16} className="text-lens-cyan shrink-0" />
-                    <span>Sign in with Google to associate uploads with your account and persist version history.</span>
+                    <span>Sign in with Google to save your version history and access all features.</span>
                   </div>
                   <button
                     type="button"
-                    onClick={() => signIn('google', { callbackUrl: '/' })}
+                    id="upload-zone-signin-btn"
+                    onClick={() => requireAuth(() => {}, 'Sign in to unlock full CareerLens access')}
                     className="btn-primary text-xs py-1.5 px-3.5 whitespace-nowrap flex items-center gap-1.5 shrink-0"
                   >
-                    <LogIn size={13} />
+                    <Sparkles size={13} />
                     <span>Sign in with Google</span>
                   </button>
                 </div>
@@ -708,6 +711,14 @@ export default function UploadPage() {
           </motion.div>
         )}
       </div>
+
+      {/* Auth Gate Modal — shown when an unauthenticated user tries a protected action */}
+      <AuthGateModal
+        isOpen={modalOpen}
+        onClose={closeModal}
+        message={modalMessage ?? 'Sign in to analyze your resume'}
+        detail="Your resume data and version history will be saved securely to your account."
+      />
     </div>
   )
 }
